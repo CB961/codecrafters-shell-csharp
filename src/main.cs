@@ -1,7 +1,7 @@
 class Program
 {
     internal enum ShellCommands
-    { 
+    {
         EXIT,
         HELP,
         ECHO,
@@ -33,14 +33,33 @@ class Program
 
             if (!string.IsNullOrEmpty(userInput))
             {
-                if (GetCommand(userInput) == null)
+                var s = userInput.Split(' ');
+                var cmd = s[0];
+                string args = string.Empty;
+
+                if (GetCommand(cmd) != null)
+                {
+                    for (int i = 1; i < s.Length; i++)
+                    {
+                        args += $"{s[i]} ";
+                    }
+
+                    args = args.Trim();
+
+                    switch (GetCommand(s[0]))
+                    {
+                        case ShellCommands.EXIT:
+                            return;
+                        case ShellCommands.ECHO:
+                            Console.WriteLine(args);
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                else
                 {
                     Console.WriteLine("{0}: command not found", userInput);
-                }
-
-                if (GetCommand(userInput) == ShellCommands.EXIT)
-                {
-                    break;
                 }
             }
             Console.Write("$ ");
