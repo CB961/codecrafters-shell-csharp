@@ -5,18 +5,16 @@ class Program
         EXIT,
         HELP,
         ECHO,
-        CD
+        CD,
+        TYPE
     }
 
     static void Main()
     {
-        // TODO: Uncomment the code below to pass the first stage
-        Console.Write("$ ");
-
         ReadUserInput();
     }
 
-    private static ShellCommands? GetCommand(string command)
+    private static ShellCommands? TryGetCommand(string command)
     {
         ShellCommands result;
 
@@ -25,33 +23,30 @@ class Program
 
     private static void ReadUserInput()
     {
-        string? userInput;
-
         do
         {
+            string? userInput;
+            Console.Write("$ ");    
             userInput = Console.ReadLine()?.Trim();
 
             if (!string.IsNullOrEmpty(userInput))
             {
-                var s = userInput.Split(' ');
-                var cmd = s[0];
-                string args = string.Empty;
+                var s = userInput.Split(' ', 2);
+                string cmd = s[0];
+                string args = s.Length > 1 ? s[1] : "";
 
-                if (GetCommand(cmd) != null)
+                if (TryGetCommand(cmd) != null)
                 {
-                    for (int i = 1; i < s.Length; i++)
-                    {
-                        args += $"{s[i]} ";
-                    }
-
-                    args = args.Trim();
-
-                    switch (GetCommand(s[0]))
+                    switch (TryGetCommand(s[0]))
                     {
                         case ShellCommands.EXIT:
-                            return;
+                            HandleExit(args);
+                            break;
                         case ShellCommands.ECHO:
-                            Console.WriteLine(args);
+                            HandleEcho(args);
+                            break;
+                        case ShellCommands.TYPE:
+                            HandleType(args);
                             break;
                         default:
                             break;
@@ -62,7 +57,37 @@ class Program
                     Console.WriteLine("{0}: command not found", userInput);
                 }
             }
-            Console.Write("$ ");
         } while (true);
+    }
+
+    private static void HandleType(string args)
+    {
+        var cmd = TryGetCommand(args);
+
+        if (cmd != null)
+        {
+            Console.WriteLine($"{cmd?.ToString().ToLower()} is a shell builtin");
+        }
+        else
+        {
+            Console.WriteLine($"{args}: not found");
+        }
+    }
+
+    private static void HandleEcho(string args)
+    {
+        Console.WriteLine(args);
+    }
+
+    private static void HandleExit(string args)
+    {
+        if (int.TryParse(args, out int statusCode))
+        {
+            Environment.Exit(statusCode);
+        }
+        else
+        {
+            Environment.Exit(0);
+        }
     }
 }
