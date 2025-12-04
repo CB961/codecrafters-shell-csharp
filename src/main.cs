@@ -2,9 +2,10 @@ class Program
 {
     internal enum ShellCommands
     { 
-        help,
-        echo,
-        cd
+        EXIT,
+        HELP,
+        ECHO,
+        CD
     }
 
     static void Main()
@@ -24,11 +25,11 @@ class Program
 
     private static void ReadUserInput()
     {
-        string userInput;
+        string? userInput;
 
         do
         {
-            userInput = Console.ReadLine();
+            userInput = Console.ReadLine()?.Trim();
 
             if (!string.IsNullOrEmpty(userInput))
             {
@@ -36,8 +37,13 @@ class Program
                 {
                     Console.WriteLine("{0}: command not found", userInput);
                 }
+
+                if (GetCommand(userInput) == ShellCommands.EXIT)
+                {
+                    break;
+                }
             }
             Console.Write("$ ");
-        } while (userInput != null);
+        } while (true);
     }
 }
