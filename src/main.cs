@@ -1,27 +1,48 @@
+using Microsoft.VisualBasic;
+using System.Diagnostics;
+
 class Program
 {
+    private static Process? _currentProcess = null;
+
     internal enum ShellCommands
     {
         EXIT,
         HELP,
         ECHO,
         CD,
-        TYPE
+        TYPE,
+        PWD
     }
 
     static void Main()
     {
-        ReadUserInput();
+        Console.CancelKeyPress += OnCancelKeyPress;
+        Start();
     }
 
-    private static ShellCommands? TryGetCommand(string command)
+    private static void OnCancelKeyPress(object? sender, ConsoleCancelEventArgs e)
     {
-        ShellCommands result;
+        if (_currentProcess != null && !_currentProcess.HasExited)
+        {
+            e.Cancel = true;
 
-        return Enum.TryParse<ShellCommands>(command, true, out result) ? result : null;
+            try
+            {
+                var processId = _currentProcess.Id;
+                _currentProcess.Kill(entireProcessTree: true);
+                Console.WriteLine("\nProcess {0} terminated.", processId);
+            }
+            catch
+            { }
+        }
+        else
+        {
+            e.Cancel = false;
+        }
     }
 
-    private static void ReadUserInput()
+    private static void Start()
     {
         do
         {
@@ -35,9 +56,9 @@ class Program
                 string cmd = s[0];
                 string args = s.Length > 1 ? s[1] : "";
 
-                if (TryGetCommand(cmd) != null)
+                if (TryGetBuiltin(cmd) != null)
                 {
-                    switch (TryGetCommand(s[0]))
+                    switch (TryGetBuiltin(s[0]))
                     {
                         case ShellCommands.EXIT:
                             HandleExit(args);
@@ -54,28 +75,84 @@ class Program
                 }
                 else
                 {
-                    Console.WriteLine("{0}: command not found", userInput);
+                    var result = TryExecuteAsProcess(cmd, args);
+
+                    if (!result)
+                    {
+                        Console.WriteLine("{0}: command not found", userInput);
+                    }
                 }
             }
         } while (true);
     }
 
+    private static bool TryExecuteAsProcess(string program, string args)
+    {
+        string? filePath = FindExecutableInPath(program);
+
+        if (string.IsNullOrEmpty(filePath))
+        {
+            return false;
+        }
+
+        return StartProcess(program, args);
+    }
+
+    private static bool StartProcess(string fileName, string args)
+    {
+        try
+        {
+            using Process process = new();
+
+            _currentProcess = process;
+
+            process.StartInfo.FileName = fileName;
+            process.StartInfo.Arguments = args;
+
+            process.StartInfo.UseShellExecute = false;
+            process.StartInfo.RedirectStandardError = true;
+            process.StartInfo.RedirectStandardInput = false;
+            process.StartInfo.RedirectStandardOutput = true;
+
+            process.StartInfo.CreateNoWindow = true;
+
+            process.OutputDataReceived += (sender, e) =>
+            {
+                if (e.Data != null)
+                {
+                    Console.WriteLine(e.Data);
+                }
+            };
+
+            process.ErrorDataReceived += (sender, e) =>
+            {
+                if (e.Data != null)
+                {
+                    Console.WriteLine(e.Data);
+                }
+            };
+
+            process.Start();
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+
+            process.WaitForExit();
+
+            return process.ExitCode == 0;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Exception occured: {0}", ex.Message.ToString());
+            return false;
+        }
+        finally
+        {
+            _currentProcess = null;
+        }
+    }
+
     private static void HandleType(string args)
     {
-        //var cmd = TryGetCommand(args);
-        //var path = Environment.GetEnvironmentVariable("path");
-
-        //if (cmd != null)
-        //{
-        //    Console.WriteLine($"{cmd?.ToString().ToLower()} is a shell builtin");
-        //}
-        //else
-        //{
-        //    if (!CheckEachDirectoryInPath(args, path!))
-        //    {
-        //        Console.WriteLine($"{args}: not found");
-        //    }
-        //}
         if (IsBuiltinCommand(args, out var builtin))
         {
             Console.WriteLine($"{args} is a shell builtin");
@@ -137,9 +214,16 @@ class Program
         return null;
     }
 
+    private static ShellCommands? TryGetBuiltin(string command)
+    {
+        ShellCommands result;
+
+        return Enum.TryParse<ShellCommands>(command, true, out result) ? result : null;
+    }
+
     private static bool IsBuiltinCommand(string command, out ShellCommands? builtin)
     {
-        builtin = TryGetCommand(command);
+        builtin = TryGetBuiltin(command);
         return builtin != null;
     }
 
