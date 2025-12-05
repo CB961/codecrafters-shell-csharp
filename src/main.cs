@@ -26,7 +26,7 @@ class Program
         do
         {
             string? userInput;
-            Console.Write("$ ");    
+            Console.Write("$ ");
             userInput = Console.ReadLine()?.Trim();
 
             if (!string.IsNullOrEmpty(userInput))
@@ -62,16 +62,29 @@ class Program
 
     private static void HandleType(string args)
     {
-        var cmd = TryGetCommand(args);
+        //var cmd = TryGetCommand(args);
+        //var path = Environment.GetEnvironmentVariable("path");
 
-        if (cmd != null)
+        //if (cmd != null)
+        //{
+        //    Console.WriteLine($"{cmd?.ToString().ToLower()} is a shell builtin");
+        //}
+        //else
+        //{
+        //    if (!CheckEachDirectoryInPath(args, path!))
+        //    {
+        //        Console.WriteLine($"{args}: not found");
+        //    }
+        //}
+        if (IsBuiltinCommand(args, out var builtin))
         {
-            Console.WriteLine($"{cmd?.ToString().ToLower()} is a shell builtin");
+            Console.WriteLine($"{args} is a shell builtin");
+            return;
         }
-        else
-        {
-            Console.WriteLine($"{args}: not found");
-        }
+
+        string? fullPath = FindExecutableInPath(args);
+
+        PrintTypeResult(args, fullPath);
     }
 
     private static void HandleEcho(string args)
@@ -88,6 +101,85 @@ class Program
         else
         {
             Environment.Exit(0);
+        }
+    }
+
+    private static string? FindExecutableInPath(string command)
+    {
+        string? pathVar = Environment.GetEnvironmentVariable("PATH");
+        if (pathVar == null)
+        {
+            return null;
+        }
+
+        string[] directories = pathVar.Split(Path.PathSeparator);
+
+        string[] pathExt = Environment.GetEnvironmentVariable("PATHEXT")?
+            .Split(';', StringSplitOptions.RemoveEmptyEntries)
+            ?? [];
+
+        foreach (string dir in directories)
+        {
+            string filePath = Path.Combine(dir, command);
+            if (File.Exists(filePath) && HasExecutePermission(filePath))
+                return filePath;
+
+            foreach (string ext in pathExt)
+            {
+                string fullPath = Path.Combine(dir, command + ext);
+                if (File.Exists(fullPath) && HasExecutePermission(fullPath))
+                {
+                    return fullPath;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static bool IsBuiltinCommand(string command, out ShellCommands? builtin)
+    {
+        builtin = TryGetCommand(command);
+        return builtin != null;
+    }
+
+    private static void PrintTypeResult(string command, string? filePath)
+    {
+        if (string.IsNullOrEmpty(filePath))
+        {
+            Console.WriteLine($"{command}: not found");
+            return;
+        }
+
+        Console.WriteLine($"{command} is {filePath}");
+    }
+
+    private static bool HasExecutePermission(string? filePath)
+    {
+        if (!File.Exists(filePath))
+        {
+            return false;
+        }
+
+        if (OperatingSystem.IsWindows())
+        {
+            return true;
+        }
+
+        try
+        {
+            using var process = new System.Diagnostics.Process();
+            process.StartInfo.FileName = "test";
+            process.StartInfo.Arguments = $"-x \"{filePath}\"";
+            process.StartInfo.UseShellExecute = false;
+            process.StartInfo.CreateNoWindow = true;
+            process.Start();
+            process.WaitForExit();
+            return process.ExitCode == 0;
+        }
+        catch
+        {
+            return false;
         }
     }
 }
