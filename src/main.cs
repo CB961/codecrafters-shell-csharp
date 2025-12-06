@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Security;
 
 internal static class Program
 {
@@ -90,7 +91,35 @@ internal static class Program
 
     private static void HandleCd(string path)
     {
-        var exists = DirectoryExists(path);
+        var prevPath = Environment.CurrentDirectory;
+        if (path == "~")
+        {
+            try
+            {
+                if (OperatingSystem.IsWindows())
+                {
+                    var homeDrive = Environment.GetEnvironmentVariable("HOMEDRIVE");
+                    var homePath = Environment.GetEnvironmentVariable("HOMEPATH");
+                    path = Path.Combine(homeDrive + homePath ?? prevPath);
+                }
+                else
+                {
+                    path = Environment.GetEnvironmentVariable("HOME") ?? prevPath;
+                }
+            }
+            catch (ArgumentNullException ex)
+            {
+                Console.WriteLine("Could not find variable referring to home directory of the user");
+                path = prevPath;
+            }
+            catch (SecurityException ex)
+            {
+                Console.WriteLine("Caller does not have the required permissions: \n{0}", ex.Message);
+                path = prevPath;
+            }
+        }
+        
+        var exists = DirectoryExists(path!);
 
         if (!exists)
         {
@@ -98,7 +127,7 @@ internal static class Program
             return;
         }
         
-        Environment.CurrentDirectory = path;
+        Environment.CurrentDirectory = path!;
     }
 
     private static bool DirectoryExists(string path)
