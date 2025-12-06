@@ -65,6 +65,9 @@ internal static class Program
                     case ShellCommands.PWD:
                         PrintCurrentWorkingDirectory();
                         break;
+                    case ShellCommands.CD:
+                        HandleCd(args);
+                        break;
                     case ShellCommands.ECHO:
                         HandleEcho(args);
                         break;
@@ -83,6 +86,24 @@ internal static class Program
                 }
             }
         } while (true);
+    }
+
+    private static void HandleCd(string path)
+    {
+        var exists = DirectoryExists(path);
+
+        if (!exists)
+        {
+            Console.WriteLine($"{path}: No such file or directory");
+            return;
+        }
+        
+        Environment.CurrentDirectory = path;
+    }
+
+    private static bool DirectoryExists(string path)
+    {
+        return Path.Exists(path);
     }
 
     private static void PrintCurrentWorkingDirectory()
