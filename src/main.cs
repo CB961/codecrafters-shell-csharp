@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Security;
+using System.Text;
 
 internal static class Program
 {
@@ -7,12 +8,12 @@ internal static class Program
 
     private enum ShellCommands
     {
-        EXIT,
-        HELP,
-        ECHO,
-        CD,
-        TYPE,
-        PWD
+        Cd,
+        Echo,
+        Exit,
+        Help,
+        Pwd,
+        Type
     }
 
     private static void Main()
@@ -49,30 +50,31 @@ internal static class Program
         do
         {
             Console.Write("$ ");
-            var userInput = Console.ReadLine()?.Trim();
-
-            if (string.IsNullOrEmpty(userInput)) continue;
-            var s = userInput.Split(' ', 2);
-            var cmd = s[0];
-            var args = s.Length > 1 ? s[1] : "";
-
+            var userInput = Console.ReadLine()?.Trim() ?? string.Empty;
+            
+            var tokenizedInput = Tokenize(userInput);
+            if (tokenizedInput.Count == 0) continue;
+            
+            var cmd = tokenizedInput[0];
+            var args = tokenizedInput.Count > 1 ? tokenizedInput.Skip(1).ToArray() : [];
+            
             if (TryGetBuiltin(cmd) != null)
             {
-                switch (TryGetBuiltin(s[0]))
+                switch (TryGetBuiltin(cmd))
                 {
-                    case ShellCommands.EXIT:
+                    case ShellCommands.Exit:
                         HandleExit(args);
                         break;
-                    case ShellCommands.PWD:
+                    case ShellCommands.Pwd:
                         PrintCurrentWorkingDirectory();
                         break;
-                    case ShellCommands.CD:
+                    case ShellCommands.Cd:
                         HandleCd(args);
                         break;
-                    case ShellCommands.ECHO:
+                    case ShellCommands.Echo:
                         HandleEcho(args);
                         break;
-                    case ShellCommands.TYPE:
+                    case ShellCommands.Type:
                         HandleType(args);
                         break;
                 }
@@ -83,15 +85,61 @@ internal static class Program
 
                 if (!result)
                 {
-                    Console.WriteLine("{0}: command not found", userInput);
+                    Console.WriteLine("{0}: command not found", cmd);
                 }
             }
         } while (true);
+        // ReSharper disable once FunctionNeverReturns
     }
 
-    private static void HandleCd(string path)
+    private static List<string> Tokenize(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+        {
+            return [];
+        }
+
+        var tokens = new List<string>();
+        var currentToken = new StringBuilder();
+        var inSingleQuotes = false;
+
+        foreach (var c in input)
+        {
+            if (c == '\'')
+            {
+                inSingleQuotes = !inSingleQuotes;
+                continue;
+            }
+
+            if (!inSingleQuotes)
+            {
+                if (char.IsWhiteSpace(c))
+                {
+                    if (currentToken.Length > 0)
+                    {
+                        tokens.Add(currentToken.ToString());
+                        currentToken.Clear();
+                    }
+                    continue;
+                }
+            }
+
+            currentToken.Append(c);
+        }
+
+        if (currentToken.Length > 0)
+        {
+            tokens.Add(currentToken.ToString());
+        }
+
+        return tokens;
+    }
+
+    private static void HandleCd(string[] args)
     {
         var prevPath = Environment.CurrentDirectory;
+        var path = args.Length > 0 ? args[0] : "~";
+        
         if (path == "~")
         {
             try
@@ -140,14 +188,13 @@ internal static class Program
         Console.WriteLine(Environment.CurrentDirectory);
     }
 
-    private static bool TryExecuteAsProcess(string program, string args)
+    private static bool TryExecuteAsProcess(string program, string[] args)
     {
         var filePath = FindExecutableInPath(program);
-
         return !string.IsNullOrEmpty(filePath) && StartProcess(program, args);
     }
 
-    private static bool StartProcess(string fileName, string args)
+    private static bool StartProcess(string fileName, string[] args)
     {
         try
         {
@@ -156,7 +203,11 @@ internal static class Program
             _currentProcess = process;
 
             process.StartInfo.FileName = fileName;
-            process.StartInfo.Arguments = args;
+            process.StartInfo.ArgumentList.Clear();
+            foreach (var arg in args)
+            {
+                process.StartInfo.ArgumentList.Add(arg);
+            }
 
             process.StartInfo.UseShellExecute = false;
             process.StartInfo.RedirectStandardError = true;
@@ -191,7 +242,7 @@ internal static class Program
         }
         catch (Exception ex)
         {
-            Console.WriteLine("Exception occured: {0}", ex.Message.ToString());
+            Console.WriteLine("Exception occured: {0}", ex.Message);
             return false;
         }
         finally
@@ -200,27 +251,42 @@ internal static class Program
         }
     }
 
-    private static void HandleType(string args)
+    private static void HandleType(string[] args)
     {
-        if (IsBuiltinCommand(args, out var builtin))
+        if (args.Length == 0)
         {
-            Console.WriteLine($"{args} is a shell builtin");
             return;
         }
 
-        var fullPath = FindExecutableInPath(args);
+        foreach (var arg in args)
+        {
+            if (IsBuiltinCommand(arg, out var builtin))
+            {
+                Console.WriteLine($"{arg} is a shell builtin");
+                return;
+            }
 
-        PrintTypeResult(args, fullPath);
+            var fullPath = FindExecutableInPath(arg);
+            PrintTypeResult(arg, fullPath);
+        }
     }
 
-    private static void HandleEcho(string args)
+    private static void HandleEcho(string[] args)
     {
-        Console.WriteLine(args);
+        Console.WriteLine(string.Join(' ', args));
     }
 
-    private static void HandleExit(string args)
+    private static void HandleExit(string[] args)
     {
-        Environment.Exit(int.TryParse(args, out var statusCode) ? statusCode : 0);
+        var code = 0;
+
+        if (args.Length > 0)
+        {
+            // ReSharper disable once UnusedVariable
+            var succeeded = int.TryParse(args[0], out code);
+        }
+        
+        Environment.Exit(code);
     }
 
     private static string? FindExecutableInPath(string command)
@@ -293,7 +359,7 @@ internal static class Program
 
         try
         {
-            using var process = new System.Diagnostics.Process();
+            using var process = new Process();
             process.StartInfo.FileName = "test";
             process.StartInfo.Arguments = $"-x \"{filePath}\"";
             process.StartInfo.UseShellExecute = false;
