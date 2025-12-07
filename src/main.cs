@@ -51,13 +51,13 @@ internal static class Program
         {
             Console.Write("$ ");
             var userInput = Console.ReadLine()?.Trim() ?? string.Empty;
-            
+
             var tokenizedInput = Tokenize(userInput);
             if (tokenizedInput.Count == 0) continue;
-            
+
             var cmd = tokenizedInput[0];
             var args = tokenizedInput.Count > 1 ? tokenizedInput.Skip(1).ToArray() : [];
-            
+
             if (TryGetBuiltin(cmd) != null)
             {
                 switch (TryGetBuiltin(cmd))
@@ -102,29 +102,36 @@ internal static class Program
         var tokens = new List<string>();
         var currentToken = new StringBuilder();
         var inSingleQuotes = false;
+        var inDoubleQuotes = false;
 
         foreach (var c in input)
         {
-            if (c == '\'')
+            switch (c)
             {
-                inSingleQuotes = !inSingleQuotes;
+                case '\'' when !inDoubleQuotes:
+                    inSingleQuotes = !inSingleQuotes;
+                    continue;
+                case '\"' when !inSingleQuotes:
+                    inDoubleQuotes = !inDoubleQuotes;
+                    continue;
+            }
+
+            if (!inSingleQuotes && !inDoubleQuotes && char.IsWhiteSpace(c))
+            {
+                if (currentToken.Length > 0)
+                {
+                    tokens.Add(currentToken.ToString());
+                    currentToken.Clear();
+                }
                 continue;
             }
 
-            if (!inSingleQuotes)
-            {
-                if (char.IsWhiteSpace(c))
-                {
-                    if (currentToken.Length > 0)
-                    {
-                        tokens.Add(currentToken.ToString());
-                        currentToken.Clear();
-                    }
-                    continue;
-                }
-            }
-
             currentToken.Append(c);
+        }
+
+        if (inDoubleQuotes || inSingleQuotes)
+        {
+            throw new Exception("Unmatched quotes in input");
         }
 
         if (currentToken.Length > 0)
@@ -139,7 +146,7 @@ internal static class Program
     {
         var prevPath = Environment.CurrentDirectory;
         var path = args.Length > 0 ? args[0] : "~";
-        
+
         if (path == "~")
         {
             try
@@ -166,7 +173,7 @@ internal static class Program
                 path = prevPath;
             }
         }
-        
+
         var exists = DirectoryExists(path!);
 
         if (!exists)
@@ -174,7 +181,7 @@ internal static class Program
             Console.WriteLine($"{path}: No such file or directory");
             return;
         }
-        
+
         Environment.CurrentDirectory = path!;
     }
 
@@ -285,7 +292,7 @@ internal static class Program
             // ReSharper disable once UnusedVariable
             var succeeded = int.TryParse(args[0], out code);
         }
-        
+
         Environment.Exit(code);
     }
 
@@ -324,7 +331,6 @@ internal static class Program
 
     private static ShellCommands? TryGetBuiltin(string command)
     {
-
         return Enum.TryParse<ShellCommands>(command, true, out var result) ? result : null;
     }
 
