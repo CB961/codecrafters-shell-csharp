@@ -103,17 +103,28 @@ internal static class Program
         var currentToken = new StringBuilder();
         var inSingleQuotes = false;
         var inDoubleQuotes = false;
+        var isEscaping = false;
 
         foreach (var c in input)
         {
             switch (c)
             {
-                case '\'' when !inDoubleQuotes:
+                case '\\' when !inSingleQuotes && !inDoubleQuotes && !isEscaping:
+                    isEscaping = !isEscaping;
+                    continue;
+                case '\'' when !inDoubleQuotes && !isEscaping:
                     inSingleQuotes = !inSingleQuotes;
                     continue;
-                case '\"' when !inSingleQuotes:
+                case '\"' when !inSingleQuotes && !isEscaping:
                     inDoubleQuotes = !inDoubleQuotes;
                     continue;
+            }
+
+            if (isEscaping)
+            {
+                currentToken.Append(c);
+                isEscaping = !isEscaping;
+                continue;
             }
 
             if (!inSingleQuotes && !inDoubleQuotes && char.IsWhiteSpace(c))
