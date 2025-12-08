@@ -50,7 +50,7 @@ internal static class Program
         do
         {
             Console.Write("$ ");
-            var userInput = Console.ReadLine()?.Trim() ?? string.Empty;
+            var userInput = Console.ReadLine() ?? string.Empty;
 
             var tokenizedInput = Tokenize(userInput);
             if (tokenizedInput.Count == 0) continue;
@@ -81,7 +81,7 @@ internal static class Program
             }
             else
             {
-                var result = TryExecuteAsProcess(cmd, args);
+                var result = TryExecuteProcess(cmd, args);
 
                 if (!result)
                 {
@@ -110,7 +110,7 @@ internal static class Program
             switch (c)
             {
                 case '\\' when !inSingleQuotes && !isEscaping:
-                    isEscaping = !isEscaping;
+                    isEscaping = true;
                     continue;
                 case '\'' when !inDoubleQuotes && !isEscaping:
                     inSingleQuotes = !inSingleQuotes;
@@ -124,12 +124,13 @@ internal static class Program
             {
                 if (inDoubleQuotes && c is not ('"' or '\\'))
                 {
-                    isEscaping = !isEscaping;
+                    isEscaping = false;
                     currentToken.Append($"\\{c}");
                     continue;
                 }
+
                 currentToken.Append(c);
-                isEscaping = !isEscaping;
+                isEscaping = false;
                 continue;
             }
 
@@ -140,6 +141,7 @@ internal static class Program
                     tokens.Add(currentToken.ToString());
                     currentToken.Clear();
                 }
+
                 continue;
             }
 
@@ -212,10 +214,16 @@ internal static class Program
         Console.WriteLine(Environment.CurrentDirectory);
     }
 
-    private static bool TryExecuteAsProcess(string program, string[] args)
+    private static bool TryExecuteProcess(string program, string[] args)
     {
         var filePath = FindExecutableInPath(program);
-        return !string.IsNullOrEmpty(filePath) && StartProcess(program, args);
+
+        if (filePath == null)
+        {
+            return false;
+        }
+
+        return StartProcess(Path.GetFileName(filePath), args);
     }
 
     private static bool StartProcess(string fileName, string[] args)
@@ -313,7 +321,7 @@ internal static class Program
         Environment.Exit(code);
     }
 
-    private static string? FindExecutableInPath(string command)
+    private static string? FindExecutableInPath(string fileName)
     {
         var pathVar = Environment.GetEnvironmentVariable("PATH");
         if (pathVar == null)
@@ -329,16 +337,36 @@ internal static class Program
 
         foreach (var dir in directories)
         {
-            var filePath = Path.Combine(dir, command);
-            if (File.Exists(filePath) && HasExecutePermission(filePath))
-                return filePath;
-
-            foreach (var ext in pathExt)
+            if (!DirectoryExists(dir))
             {
-                var fullPath = Path.Combine(dir, command + ext);
-                if (File.Exists(fullPath) && HasExecutePermission(fullPath))
+                continue;
+            }
+
+            foreach (var file in Directory.EnumerateFiles(dir))
+            {
+                var name = Path.GetFileName(file);
+
+                if (OperatingSystem.IsWindows())
                 {
-                    return fullPath;
+                    if (string.Equals(name, fileName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (HasExecutePermission(file)) return file;
+                    }
+                    else
+                    {
+                        foreach (var ext in pathExt)
+                        {
+                            if (!string.Equals(name, fileName + ext, StringComparison.OrdinalIgnoreCase)) continue;
+                            if (HasExecutePermission(file)) return file;
+                        }
+                    }
+                }
+                else
+                {
+                    if (name == fileName && HasExecutePermission(file))
+                    {
+                        return file;
+                    }
                 }
             }
         }
@@ -384,7 +412,9 @@ internal static class Program
         {
             using var process = new Process();
             process.StartInfo.FileName = "test";
-            process.StartInfo.Arguments = $"-x \"{filePath}\"";
+            process.StartInfo.ArgumentList.Clear();
+            process.StartInfo.ArgumentList.Add("-x");
+            process.StartInfo.ArgumentList.Add(filePath);
             process.StartInfo.UseShellExecute = false;
             process.StartInfo.CreateNoWindow = true;
             process.Start();
