@@ -18,7 +18,6 @@ internal static class Program
 
     private static void Main()
     {
-        Console.CancelKeyPress += OnCancelKeyPress;
         Start();
     }
 
@@ -47,6 +46,7 @@ internal static class Program
 
     private static void Start()
     {
+        Console.CancelKeyPress += OnCancelKeyPress;
         do
         {
             Console.Write("$ ");
@@ -109,19 +109,25 @@ internal static class Program
         {
             switch (c)
             {
-                case '\\' when !inSingleQuotes && !inDoubleQuotes && !isEscaping:
+                case '\\' when !inSingleQuotes && !isEscaping:
                     isEscaping = !isEscaping;
                     continue;
                 case '\'' when !inDoubleQuotes && !isEscaping:
                     inSingleQuotes = !inSingleQuotes;
                     continue;
-                case '\"' when !inSingleQuotes && !isEscaping:
+                case '"' when !inSingleQuotes && !isEscaping:
                     inDoubleQuotes = !inDoubleQuotes;
                     continue;
             }
 
             if (isEscaping)
             {
+                if (inDoubleQuotes && c is not ('"' or '\\'))
+                {
+                    isEscaping = !isEscaping;
+                    currentToken.Append($"\\{c}");
+                    continue;
+                }
                 currentToken.Append(c);
                 isEscaping = !isEscaping;
                 continue;
