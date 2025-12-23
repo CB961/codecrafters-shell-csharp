@@ -17,7 +17,7 @@ public class CommandLineParser(IEnumerable<Token> tokens)
 
         while (!AtEnd())
         {
-            if (Match(TokenType.RedirectOut))
+            if (Match(TokenType.Redirect))
             {
                 redirects.Add(ParseRedirect());
             }
@@ -36,12 +36,24 @@ public class CommandLineParser(IEnumerable<Token> tokens)
     
     private RedirectNode ParseRedirect()
     {
-        Consume(TokenType.RedirectOut);
+        var redirectToken = Consume(TokenType.Redirect);
         var target = Consume(TokenType.Word);
-        return new RedirectNode(RedirectType.Out, new LiteralArgument(target.Value));
+        var redirectType = ProduceRedirectType(redirectToken.Value);
+        
+        return new RedirectNode(redirectType, new LiteralArgument(target.Value));
     }
 
     #region Helpers
+
+    private static RedirectType ProduceRedirectType(string tokenValue)
+    {
+        return tokenValue switch
+        {
+            ">" or "1>" => RedirectType.Out,
+            "2>" => RedirectType.Error,
+            _ => throw new ArgumentOutOfRangeException(nameof(tokenValue), tokenValue, null)
+        };
+    }
 
     private Token Consume(params TokenType[] types)
     {

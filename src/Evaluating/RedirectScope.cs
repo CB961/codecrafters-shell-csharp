@@ -19,14 +19,26 @@ public sealed class RedirectScope : IDisposable
         ArgumentEvaluator argEvaluator
     )
     {
-        var redirect = scRedirects.LastOrDefault(r => r.Type == RedirectType.Out);
+        var redirect = scRedirects.LastOrDefault();
 
         if (redirect is null)
         {
             Context = mainContext;
             return;
-        } 
+        }
 
+        var outStream = redirect.Type == RedirectType.Out 
+            ? CreateStreamWriter(redirect, mainContext, argEvaluator) 
+            : mainContext.StdOut;
+        var errStream = redirect.Type == RedirectType.Error 
+            ? CreateStreamWriter(redirect, mainContext, argEvaluator) 
+            : mainContext.StdErr;
+        
+        Context = new RedirectionContext(mainContext, outStream, errStream);
+    }
+
+    private StreamWriter CreateStreamWriter(RedirectNode redirect, IShellContext mainContext, ArgumentEvaluator argEvaluator)
+    {
         var target = argEvaluator.Evaluate(redirect.Target);
         var fullTarget = PathHelper.ExpandPath(target, mainContext);
         
@@ -38,9 +50,9 @@ public sealed class RedirectScope : IDisposable
         _disposables.Add(sw);
         _disposables.Add(fs);
 
-        Context = new RedirectionContext(mainContext, sw, mainContext.StdErr);
+        return sw;
     }
-
+    
     public void Dispose()
     {
         foreach (var disposable in _disposables)

@@ -4,5 +4,5 @@ public enum TokenType
 {
     Word,
     Pipeline,
-    RedirectOut
+    Redirect,
 }

@@ -6,75 +6,6 @@ public class CommandLexer
 {
     public List<Token> Tokens { get; } = [];
 
-    // public void Lex(string input)
-    // {
-    //     var index = 0;
-    //     if (string.IsNullOrEmpty(input)) return;
-    //
-    //     while (index < input.Length)
-    //     {
-    //         if (char.IsWhiteSpace(input[index]))
-    //         {
-    //             index++;
-    //             continue;
-    //         }
-    //
-    //         var matchFound = false;
-    //
-    //         foreach (var (type, pattern) in TokenDefinition.TokenSpecs)
-    //         {
-    //             var match = pattern.Match(input, index);
-    //
-    //             if (!match.Success || match.Index != index)
-    //             {
-    //                 continue;
-    //             }
-    //
-    //             var value = match.Value;
-    //
-    //             if (type == TokenType.StringLiteral)
-    //             {
-    //                 value = UnquoteString(value);
-    //             }
-    //             
-    //             Tokens.Add(new Token(type, value));
-    //             index += match.Length;
-    //             matchFound = true;
-    //             break;
-    //         }
-    //
-    //         if (!matchFound)
-    //         {
-    //             throw new LexerException($"Unexpected character '{input[index]}' at position {index}");
-    //         }
-    //     }
-    // }
-
-    private static string UnquoteString(string value)
-    {
-        var inner = value.Substring(1, value.Length - 2);
-        var sb = new StringBuilder(inner.Length);
-
-        for (var i = 0; i < inner.Length; i++)
-        {
-            if (inner[i] == '\\' && i + 1 < inner.Length)
-            {
-                var next = inner[i + 1];
-
-                if (next is '"' or '\\')
-                {
-                    sb.Append(next);
-                    i++;
-                    continue;
-                }
-            }
-
-            sb.Append(inner[i]);
-        }
-
-        return sb.ToString();
-    }
-
     public void ClearTokens()
     {
         Tokens.Clear();
@@ -126,15 +57,15 @@ public class CommandLexer
             {
                 switch (c)
                 {
-                    // 1>
-                    case '1' when i + 1 < input.Length && input[i + 1] == '>':
+                    // 1> or 2>
+                    case '1' or '2' when i + 1 < input.Length && input[i + 1] == '>':
                         FlushWord();
-                        Tokens.Add(new Token(TokenType.RedirectOut, "1>"));
+                        Tokens.Add(new Token(TokenType.Redirect, $"{c}>"));
                         i++;
                         continue;
                     case '>':
                         FlushWord();
-                        Tokens.Add(new Token(TokenType.RedirectOut, ">"));
+                        Tokens.Add(new Token(TokenType.Redirect, $"{c}"));
                         continue;
                 }
             }

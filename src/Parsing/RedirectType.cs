@@ -3,6 +3,7 @@
 public enum RedirectType
 {
     Out,
+    Error,
     Append,
     In
 }
