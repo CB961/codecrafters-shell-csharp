@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "codecrafters-shell": {
+      "commandName": "Project"
+    },
+    "WSL": {
+      "commandName": "WSL2",
+      "distributionName": "Ubuntu-24.04"
+    }
+  }
+}
