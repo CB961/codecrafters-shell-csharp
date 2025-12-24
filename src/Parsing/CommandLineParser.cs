@@ -50,6 +50,7 @@ public class CommandLineParser(IEnumerable<Token> tokens)
         return tokenValue switch
         {
             ">>" or "1>>" => RedirectType.Append,
+            "2>>" => RedirectType.AppendError,
             ">" or "1>" => RedirectType.Out,
             "2>" => RedirectType.Error,
             _ => throw new ArgumentOutOfRangeException(nameof(tokenValue), tokenValue, null)

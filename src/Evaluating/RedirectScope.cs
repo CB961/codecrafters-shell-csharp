@@ -30,7 +30,7 @@ public sealed class RedirectScope : IDisposable
         var outStream = redirect.Type is RedirectType.Out or RedirectType.Append
             ? CreateStreamWriter(redirect, mainContext, argEvaluator)
             : mainContext.StdOut;
-        var errStream = redirect.Type == RedirectType.Error
+        var errStream = redirect.Type is RedirectType.Error or RedirectType.AppendError
             ? CreateStreamWriter(redirect, mainContext, argEvaluator)
             : mainContext.StdErr;
 
@@ -47,7 +47,9 @@ public sealed class RedirectScope : IDisposable
 
         Directory.CreateDirectory(Path.GetDirectoryName(fullTarget)!);
 
-        var fileMode = redirect.Type == RedirectType.Append ? FileMode.Append : FileMode.Create;
+        var fileMode = redirect.Type is RedirectType.Append or RedirectType.AppendError 
+            ? FileMode.Append 
+            : FileMode.Create;
 
         var fs = new FileStream(fullTarget, fileMode, FileAccess.Write);
         var sw = new StreamWriter(fs) { AutoFlush = true };
