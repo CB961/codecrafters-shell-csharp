@@ -12,7 +12,7 @@ public sealed class RedirectScope : IDisposable
     private readonly List<IDisposable> _disposables = [];
 
     public IShellContext Context { get; }
-    
+
     public RedirectScope(
         ImmutableList<RedirectNode> scRedirects,
         IShellContext mainContext,
@@ -27,24 +27,29 @@ public sealed class RedirectScope : IDisposable
             return;
         }
 
-        var outStream = redirect.Type == RedirectType.Out 
-            ? CreateStreamWriter(redirect, mainContext, argEvaluator) 
+        var outStream = redirect.Type is RedirectType.Out or RedirectType.Append
+            ? CreateStreamWriter(redirect, mainContext, argEvaluator)
             : mainContext.StdOut;
-        var errStream = redirect.Type == RedirectType.Error 
-            ? CreateStreamWriter(redirect, mainContext, argEvaluator) 
+        var errStream = redirect.Type == RedirectType.Error
+            ? CreateStreamWriter(redirect, mainContext, argEvaluator)
             : mainContext.StdErr;
-        
+
         Context = new RedirectionContext(mainContext, outStream, errStream);
     }
 
-    private StreamWriter CreateStreamWriter(RedirectNode redirect, IShellContext mainContext, ArgumentEvaluator argEvaluator)
+    private StreamWriter CreateStreamWriter(
+        RedirectNode redirect,
+        IShellContext mainContext,
+        ArgumentEvaluator argEvaluator)
     {
         var target = argEvaluator.Evaluate(redirect.Target);
         var fullTarget = PathHelper.ExpandPath(target, mainContext);
-        
+
         Directory.CreateDirectory(Path.GetDirectoryName(fullTarget)!);
 
-        var fs = new FileStream(fullTarget, FileMode.Create, FileAccess.Write);
+        var fileMode = redirect.Type == RedirectType.Append ? FileMode.Append : FileMode.Create;
+
+        var fs = new FileStream(fullTarget, fileMode, FileAccess.Write);
         var sw = new StreamWriter(fs) { AutoFlush = true };
 
         _disposables.Add(sw);
@@ -52,13 +57,14 @@ public sealed class RedirectScope : IDisposable
 
         return sw;
     }
-    
+
     public void Dispose()
     {
         foreach (var disposable in _disposables)
         {
             disposable.Dispose();
         }
+
         _disposables.Clear();
     }
 }

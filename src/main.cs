@@ -1,4 +1,3 @@
-using codecrafters_shell.Evaluating;
 using codecrafters_shell.Interfaces;
 using codecrafters_shell.Lexing;
 using codecrafters_shell.PathResolving;

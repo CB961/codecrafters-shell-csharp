@@ -60,12 +60,28 @@ public class CommandLexer
                     // 1> or 2>
                     case '1' or '2' when i + 1 < input.Length && input[i + 1] == '>':
                         FlushWord();
-                        Tokens.Add(new Token(TokenType.Redirect, $"{c}>"));
+                        if (i + 2 < input.Length && input[i + 2] == '>')
+                        {
+                            Tokens.Add(new Token(TokenType.Redirect, $"{c}>>"));
+                            i++;
+                        }
+                        else
+                        {
+                            Tokens.Add(new Token(TokenType.Redirect, $"{c}>"));
+                        }
                         i++;
                         continue;
                     case '>':
+                        if (i + 1 < input.Length && input[i + 1] == '>')
+                        {
+                            FlushWord();
+                            Tokens.Add(new Token(TokenType.Redirect, ">>"));
+                            i++;
+                            continue;
+                        }
                         FlushWord();
                         Tokens.Add(new Token(TokenType.Redirect, $"{c}"));
+                        i++;
                         continue;
                 }
             }
