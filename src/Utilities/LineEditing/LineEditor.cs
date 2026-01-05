@@ -77,10 +77,6 @@ public class LineEditor(AutocompletionProvider provider)
         }
     }
     
-    public string GetText() => _buffer.Text.ToString();
-
-    public void ClearBuffer() => _buffer.Clear();
-    
     #region Handlers
 
     private EditorAction HandleTab()
@@ -126,7 +122,7 @@ public class LineEditor(AutocompletionProvider provider)
         
         if (_wordBoundaries == null || string.IsNullOrEmpty(suggestion)) return false;
         
-        ReplaceWord(_wordBoundaries, suggestion);
+        AutocompleteWord(_wordBoundaries, suggestion);
         return true;
     }
 
@@ -135,11 +131,16 @@ public class LineEditor(AutocompletionProvider provider)
         var suggestion = provider.GetNextSuggestion();
         if (_wordBoundaries != null && !string.IsNullOrEmpty(suggestion))
         {
-            ReplaceWord(_wordBoundaries, suggestion);
+            AutocompleteWord(_wordBoundaries, suggestion);
             return true;
         }
 
         return false;
+    }
+    
+    private void AutocompleteWord(WordBoundaries boundaries, string suggestion)
+    {
+        _buffer.Replace(boundaries, suggestion);
     }
 
     private void ResetAutocomplete()
@@ -150,14 +151,13 @@ public class LineEditor(AutocompletionProvider provider)
     }
 
     #endregion
+
+    #region Helpers
+
+    public string GetText() => _buffer.Text.ToString();
+
+    public void ClearBuffer() => _buffer.Clear();
     
-    #endregion
-
-    private void ReplaceWord(WordBoundaries boundaries, string suggestion)
-    {
-        _buffer.Replace(boundaries, suggestion);
-    }
-
     private string GetWord(WordBoundaries wordBoundaries) =>
         _buffer.Text.ToString(wordBoundaries.Start, wordBoundaries.Length);
 
@@ -183,4 +183,8 @@ public class LineEditor(AutocompletionProvider provider)
 
         return new WordBoundaries(start, end - start + 1);
     }
+
+    #endregion
+    
+    #endregion
 }

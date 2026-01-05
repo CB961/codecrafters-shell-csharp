@@ -1,23 +1,73 @@
-﻿using codecrafters_shell.Interfaces;
+﻿using System.Collections.Immutable;
+using codecrafters_shell.Interfaces;
 using codecrafters_shell.src.Interfaces;
 
 namespace codecrafters_shell.PathResolving;
 
 public class PathResolver(IShellContext context) : IPathResolver
 {
-    public string? FindExecutableInPath(string command)
+    private string[] _cachedPaths = [];
+    
+    private ImmutableArray<string> CachedExecutables { get; set; } = [];
+
+    private string[] GetPathDirectories()
     {
         var path = OperatingSystem.IsWindows() ? context.Env["Path"] : context.Env["PATH"];
+        return path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
+    }
 
-        if (string.IsNullOrEmpty(path)) return null;
+    public ImmutableArray<string> GetExecutablesFromPath()
+    {
+        var paths = GetPathDirectories();
+        
+        if (CachedExecutables.Length > 0 && paths == _cachedPaths)
+            return CachedExecutables;
+        
+        _cachedPaths = paths;
+        
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var files = new List<string>();
 
-        var dirs = path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
 
-        if (dirs.Length <= 0) return null;
+        foreach (var dir in paths)
+        {
+            if (!Directory.Exists(dir)) continue;
+
+            try
+            {
+                files.AddRange(from filePath in Directory.EnumerateFiles(dir)
+                    where IsExecutable(filePath)
+                    select OperatingSystem.IsWindows()
+                        ? Path.GetFileNameWithoutExtension(filePath)
+                        : Path.GetFileName(filePath)
+                    into fileName
+                    where !string.IsNullOrEmpty(fileName)
+                    where seen.Add(fileName)
+                    select fileName
+                );
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+            catch (IOException)
+            {
+            }
+        }
+
+        CachedExecutables = [..files.OrderBy(x => x, StringComparer.Ordinal)];
+
+        return CachedExecutables;
+    }
+
+    public string? FindExecutableInPath(string command)
+    {
+        var paths = GetPathDirectories();
+
+        if (paths.Length == 0) return null;
 
         var candidates = OperatingSystem.IsWindows() ? BuildWindowsExecutableCandidates(command) : [command];
 
-        return dirs.SelectMany(dir => candidates, Path.Combine)
+        return paths.SelectMany(path => candidates, Path.Combine)
             .FirstOrDefault(fullPath => File.Exists(fullPath) && IsExecutable(fullPath));
     }
 
@@ -41,7 +91,7 @@ public class PathResolver(IShellContext context) : IPathResolver
         return [.. result];
     }
 
-    private bool IsExecutable(string filePath)
+    private static bool IsExecutable(string filePath)
     {
         if (OperatingSystem.IsWindows()) return true;
 
@@ -50,9 +100,8 @@ public class PathResolver(IShellContext context) : IPathResolver
             var mode = File.GetUnixFileMode(filePath);
             return (mode & (UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute)) != 0;
         }
-        catch (Exception ex)
+        catch
         {
-            context.StdErr.WriteLine(ex.Message);
             return false;
         }
     }

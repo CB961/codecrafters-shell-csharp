@@ -27,7 +27,8 @@ internal static class Program
         #region Autocompletion setup
 
         var builtinSource = new BuiltinCompletionSource(shellCtx.Builtins.Keys.ToList());
-        var provider = new AutocompletionProvider([builtinSource]);
+        var pathExesSource = new PathCompletionSource(resolver);  
+        var provider = new AutocompletionProvider([builtinSource, pathExesSource]);
 
         #endregion
 
