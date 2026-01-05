@@ -3,7 +3,7 @@ using codecrafters_shell.Enums;
 
 namespace codecrafters_shell.Utilities.LineEditing;
 
-public sealed class ReadLine(LineEditor editor, ILineRenderer renderer)
+public sealed class ReadLine(IConsole console, LineEditor editor, ILineRenderer renderer)
 {
     public string Read(string prompt)
     {
@@ -17,16 +17,22 @@ public sealed class ReadLine(LineEditor editor, ILineRenderer renderer)
     {
         while (true)
         {
-            var key = Console.ReadKey(intercept: true);
+            var key = console.ReadKey(intercept: true);
             var action = editor.HandleKey(key);
 
-            var text = editor.GetText();
-            renderer.Render(prompt, text);
-
-            if (action == EditorAction.AcceptLine) break;
+            if (action == EditorAction.RingBell)
+            {
+                console.Write('\a');
+                continue;
+            }
+            
+            renderer.Render(prompt, editor.GetText());
+            
+            if (action == EditorAction.AcceptLine) 
+                break;
         }
 
-        Console.WriteLine();
+        console.WriteLine();
         var result = editor.GetText();
         editor.ClearBuffer();
         return result;

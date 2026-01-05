@@ -6,6 +6,8 @@ namespace codecrafters_shell.Utilities.LineEditing;
 
 public class LineEditor(AutocompletionProvider provider)
 {
+    #region Nested Types
+
     private record WordBoundaries(int Start, int Length);
     
     private sealed class LineBuffer
@@ -43,68 +45,114 @@ public class LineEditor(AutocompletionProvider provider)
         }
     }
 
+    #endregion
+
+    #region Dependencies
+
     private readonly LineBuffer _buffer = new();
+
+    #endregion
+
+    #region fields
 
     private WordBoundaries? _wordBoundaries;
     private string _prefix = string.Empty;
+
+    #endregion
+
+    #region Methods
 
     public EditorAction HandleKey(ConsoleKeyInfo key)
     {
         switch (key.Key)
         {
             case ConsoleKey.Tab:
-                Autocomplete();
-                return EditorAction.Continue;
+                return HandleTab();
             case ConsoleKey.Backspace:
-                _buffer.RemoveBeforeCursor();
-                return EditorAction.Continue;
+                return HandleBackspace();
             case ConsoleKey.Enter:
                 return EditorAction.AcceptLine;
             default:
-                if (!char.IsControl(key.KeyChar))
-                    _buffer.Insert(key.KeyChar);
-                return EditorAction.Continue;
+                return char.IsControl(key.KeyChar) ? EditorAction.None : WriteChar(key.KeyChar);
         }
     }
-
+    
     public string GetText() => _buffer.Text.ToString();
 
     public void ClearBuffer() => _buffer.Clear();
+    
+    #region Handlers
 
-    private void Autocomplete()
+    private EditorAction HandleTab()
+    {
+        return Autocomplete() ? EditorAction.None : EditorAction.RingBell;
+    }
+    
+    private EditorAction HandleBackspace()
+    {
+        ResetAutocomplete();
+        _buffer.RemoveBeforeCursor();
+        return EditorAction.None;
+    }
+    
+    private EditorAction WriteChar(char value)
+    {
+        ResetAutocomplete();
+        _buffer.Insert(value);
+        return EditorAction.None;
+    }
+
+    #endregion
+
+    #region Autocomplete
+
+    private bool Autocomplete()
     {
         _wordBoundaries = GetWordBoundaries();
         _prefix = _wordBoundaries != null ? GetWord(_wordBoundaries) : string.Empty;
         
-        if (IsInAutocompleteMode(_prefix))
-        {
-            NextAutocomplete();
-            return;
-        }
-        
-        StartAutocomplete();
+        return IsContinuingAutocomplete(_prefix) ? NextAutocomplete() : StartAutocomplete();
     }
 
-    private bool IsInAutocompleteMode(string prefix)
+    private bool IsContinuingAutocomplete(string prefix)
     {
         return !provider.IsNewPrefix(prefix);
     }
 
-    private void StartAutocomplete()
+    private bool StartAutocomplete()
     {
         provider.ProvideSuggestions(_prefix);
         var suggestion = provider.GetCurrentSuggestion();
-        if (_wordBoundaries != null && !string.IsNullOrEmpty(suggestion))
-            ReplaceWord(_wordBoundaries, suggestion);
+        
+        if (_wordBoundaries == null || string.IsNullOrEmpty(suggestion)) return false;
+        
+        ReplaceWord(_wordBoundaries, suggestion);
+        return true;
     }
 
-    private void NextAutocomplete()
+    private bool NextAutocomplete()
     {
-        var suggestion = provider.GetCurrentSuggestion();
+        var suggestion = provider.GetNextSuggestion();
         if (_wordBoundaries != null && !string.IsNullOrEmpty(suggestion))
+        {
             ReplaceWord(_wordBoundaries, suggestion);
+            return true;
+        }
+
+        return false;
     }
+
+    private void ResetAutocomplete()
+    {
+        provider.Reset();
+        _wordBoundaries = null;
+        _prefix = string.Empty;
+    }
+
+    #endregion
     
+    #endregion
+
     private void ReplaceWord(WordBoundaries boundaries, string suggestion)
     {
         _buffer.Replace(boundaries, suggestion);

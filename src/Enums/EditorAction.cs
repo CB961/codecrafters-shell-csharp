@@ -1,7 +1,9 @@
 ﻿namespace codecrafters_shell.Enums;
 
+[Flags]
 public enum EditorAction
 {
-    AcceptLine,
-    Continue
+    None = 0,
+    AcceptLine = 1,
+    RingBell = 2
 }

@@ -7,7 +7,7 @@ public sealed class AutocompletionProvider(List<ICompletionSource> sources)
     private string _lastPrefix = string.Empty;
     private int _currentSuggestionIndex;
 
-    private List<string> Suggestions { get; } = [];
+    private List<string> Suggestions { get; set; } = [];
 
     public void ProvideSuggestions(string prefix)
     {
@@ -57,5 +57,12 @@ public sealed class AutocompletionProvider(List<ICompletionSource> sources)
     private bool IsCached()
     {
         return !string.IsNullOrEmpty(_lastPrefix);
+    }
+
+    public void Reset()
+    {
+        Suggestions = [];
+        _currentSuggestionIndex = 0;
+        _lastPrefix = "";
     }
 }
