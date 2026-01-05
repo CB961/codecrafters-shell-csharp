@@ -8,11 +8,11 @@ public static class PathHelper
     {
         path = path.Replace('/', Path.DirectorySeparatorChar);
         var home = ResolveHome(context);
-        
+
         if (path == "~") return home;
 
-        return path.StartsWith($"~{Path.DirectorySeparatorChar}") 
-            ? Path.Combine(home, path[2..]) 
+        return path.StartsWith($"~{Path.DirectorySeparatorChar}")
+            ? Path.Combine(home, path[2..])
             : Path.GetFullPath(path, context.CurrentDirectory);
     }
 
@@ -22,7 +22,7 @@ public static class PathHelper
             return home;
 
         if (!OperatingSystem.IsWindows()) throw new InvalidOperationException("HOME is not set");
-        
+
         if (context.Env.TryGetValue("USERPROFILE", out var profile))
             return profile;
 

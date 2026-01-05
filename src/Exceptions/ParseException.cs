@@ -1,3 +1,3 @@
-﻿namespace codecrafters_shell.Parsing;
+﻿namespace codecrafters_shell.Core.Parsing;
 
 public class ParseException(string message) : Exception(message);

@@ -4,4 +4,3 @@ public interface IPathResolver
 {
     string? FindExecutableInPath(string command);
 }
-

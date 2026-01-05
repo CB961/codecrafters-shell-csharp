@@ -1,4 +1,4 @@
-﻿using codecrafters_shell.PathResolving;
+﻿using codecrafters_shell.Core.Registry;
 using codecrafters_shell.src.Interfaces;
 
 namespace codecrafters_shell.Interfaces;
