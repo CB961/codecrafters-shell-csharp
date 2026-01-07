@@ -9,7 +9,7 @@ public class LineEditor(AutocompletionProvider provider)
     #region Nested Types
 
     private record WordBoundaries(int Start, int Length);
-    
+
     private sealed class LineBuffer
     {
         public StringBuilder Text { get; } = new();
@@ -20,7 +20,7 @@ public class LineEditor(AutocompletionProvider provider)
             Text.Insert(Cursor, value);
             Cursor++;
         }
-        
+
         private void MoveLeft() => Cursor = Math.Max(0, Cursor - 1);
         private void MoveRight() => Cursor = Math.Min(Text.Length, Cursor + 1);
 
@@ -45,18 +45,77 @@ public class LineEditor(AutocompletionProvider provider)
         }
     }
 
+    private sealed class AutocompletionState
+    {
+        public enum CompletionPhase
+        {
+            None,
+            AwaitingSecondTab,
+            ShowingCompletions,
+            CyclingCompletions
+        }
+
+        public bool HasActiveSession { get; private set; }
+        public CompletionPhase Phase { get; private set; } = CompletionPhase.None;
+        public WordBoundaries? Boundaries { get; private set; }
+        public string Prefix { get; private set; } = string.Empty;
+        public string LastCompletion { get; private set; } = string.Empty;
+        public string CompletionList { get; private set; } = string.Empty;
+
+        public void Start(WordBoundaries boundaries, string prefix)
+        {
+            HasActiveSession = true;
+            Boundaries = boundaries;
+            Prefix = prefix;
+            Phase = CompletionPhase.None;
+            LastCompletion = string.Empty;
+            CompletionList = string.Empty;
+        }
+
+        public void AdvancePhase(CompletionPhase phase) => Phase = phase;
+
+        public void RecordSuggestion(string suggestion) => LastCompletion = suggestion;
+
+        public void SetCompletionList(string[] suggestions) => CompletionList = string.Join("  ", suggestions);
+
+        public void Reset()
+        {
+            HasActiveSession = false;
+            Boundaries = null;
+            Prefix = string.Empty;
+            Phase = CompletionPhase.None;
+            LastCompletion = string.Empty;
+            CompletionList = string.Empty;
+        }
+
+        public override string ToString()
+        {
+            return $$"""
+                     CompletionState
+                     {
+                          HasActiveSession: {{HasActiveSession}}
+                          Phase: {{Phase}}
+                          Boundaries: {{Boundaries?.Start ?? -1}}, {{Boundaries?.Length ?? -1}}
+                          Prefix: {{Prefix}}
+                          LastCompletion: {{LastCompletion}}
+                          CompletionList: {{CompletionList}}
+                     }
+                     """;
+        }
+    }
+
     #endregion
 
     #region Dependencies
 
     private readonly LineBuffer _buffer = new();
+    private readonly AutocompletionState _completionState = new();
 
     #endregion
 
     #region fields
 
     private WordBoundaries? _wordBoundaries;
-    private string _prefix = string.Empty;
 
     #endregion
 
@@ -64,80 +123,116 @@ public class LineEditor(AutocompletionProvider provider)
 
     public EditorAction HandleKey(ConsoleKeyInfo key)
     {
-        switch (key.Key)
+        return key.Key switch
         {
-            case ConsoleKey.Tab:
-                return HandleTab();
-            case ConsoleKey.Backspace:
-                return HandleBackspace();
-            case ConsoleKey.Enter:
-                return EditorAction.AcceptLine;
-            default:
-                return char.IsControl(key.KeyChar) ? EditorAction.None : WriteChar(key.KeyChar);
-        }
+            ConsoleKey.Tab => HandleTab(),
+            ConsoleKey.Backspace => HandleBackspace(),
+            ConsoleKey.Enter => EditorAction.AcceptLine,
+            _ => char.IsControl(key.KeyChar) ? EditorAction.Continue : WriteChar(key.KeyChar)
+        };
     }
-    
+
     #region Handlers
 
     private EditorAction HandleTab()
     {
-        return Autocomplete() ? EditorAction.None : EditorAction.RingBell;
+        var boundaries = GetWordBoundaries();
+        if (boundaries == null)
+            return EditorAction.RingBell;
+
+        var prefix = GetPrefix(boundaries);
+
+        if (!_completionState.HasActiveSession)
+        {
+            provider.PrepareSuggestions(prefix);
+
+            if (provider.GetSuggestionCount() == 0)
+                return EditorAction.RingBell;
+
+            _completionState.Start(boundaries, prefix);
+        }
+
+        var suggestionCount = provider.GetSuggestionCount();
+
+        return suggestionCount switch
+        {
+            1 => CompleteSingle(),
+            _ => CompleteMultiple()
+        };
     }
-    
+
     private EditorAction HandleBackspace()
     {
         ResetAutocomplete();
         _buffer.RemoveBeforeCursor();
-        return EditorAction.None;
+        return EditorAction.Continue;
     }
-    
+
     private EditorAction WriteChar(char value)
     {
         ResetAutocomplete();
         _buffer.Insert(value);
-        return EditorAction.None;
+        return EditorAction.Continue;
     }
 
     #endregion
 
     #region Autocomplete
 
-    private bool Autocomplete()
-    {
-        _wordBoundaries = GetWordBoundaries();
-        _prefix = _wordBoundaries != null ? GetWord(_wordBoundaries) : string.Empty;
-        
-        return IsContinuingAutocomplete(_prefix) ? NextAutocomplete() : StartAutocomplete();
-    }
+    private string GetPrefix(WordBoundaries wordBoundaries) => GetWord(wordBoundaries);
 
-    private bool IsContinuingAutocomplete(string prefix)
+    private EditorAction CompleteSingle()
     {
-        return !provider.IsNewPrefix(prefix);
-    }
-
-    private bool StartAutocomplete()
-    {
-        provider.ProvideSuggestions(_prefix);
         var suggestion = provider.GetCurrentSuggestion();
-        
-        if (_wordBoundaries == null || string.IsNullOrEmpty(suggestion)) return false;
-        
-        AutocompleteWord(_wordBoundaries, suggestion);
-        return true;
+        AutocompleteWord(_completionState.Boundaries!, suggestion);
+
+        _completionState.Reset();
+        return EditorAction.Continue;
     }
 
-    private bool NextAutocomplete()
+    private EditorAction CompleteMultiple()
     {
-        var suggestion = provider.GetNextSuggestion();
-        if (_wordBoundaries != null && !string.IsNullOrEmpty(suggestion))
+        // if (_completionState.Prefix == "ech")
+        // {
+        //     Console.WriteLine("\n");
+        //     Console.WriteLine(string.Join("  ", provider.GetSuggestions()));
+        // }
+        switch (_completionState.Phase)
         {
-            AutocompleteWord(_wordBoundaries, suggestion);
-            return true;
+            case AutocompletionState.CompletionPhase.None:
+                _completionState.AdvancePhase(AutocompletionState.CompletionPhase.AwaitingSecondTab);
+                return EditorAction.RingBell;
+            case AutocompletionState.CompletionPhase.AwaitingSecondTab:
+                var suggestions = provider.GetSuggestions();
+                _completionState.SetCompletionList([..suggestions]);
+                _completionState.AdvancePhase(AutocompletionState.CompletionPhase.ShowingCompletions);
+                return EditorAction.ShowCompletions;
+            case AutocompletionState.CompletionPhase.ShowingCompletions:
+            case AutocompletionState.CompletionPhase.CyclingCompletions:
+                _completionState.AdvancePhase(AutocompletionState.CompletionPhase.CyclingCompletions);
+                CycleSuggestion();
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
         }
 
-        return false;
+        return EditorAction.Continue;
     }
-    
+
+    private void CycleSuggestion()
+    {
+        var completion = string.IsNullOrEmpty(_completionState.LastCompletion)
+            ? provider.GetCurrentSuggestion()
+            : provider.GetNextSuggestion();
+        _completionState.RecordSuggestion(completion);
+        AutocompleteWord(_completionState.Boundaries!, completion);
+    }
+
+    public string GetCompletionList()
+    {
+        return _completionState.CompletionList;
+    }
+
     private void AutocompleteWord(WordBoundaries boundaries, string suggestion)
     {
         _buffer.Replace(boundaries, suggestion);
@@ -145,9 +240,8 @@ public class LineEditor(AutocompletionProvider provider)
 
     private void ResetAutocomplete()
     {
+        _completionState.Reset();
         provider.Reset();
-        _wordBoundaries = null;
-        _prefix = string.Empty;
     }
 
     #endregion
@@ -157,7 +251,7 @@ public class LineEditor(AutocompletionProvider provider)
     public string GetText() => _buffer.Text.ToString();
 
     public void ClearBuffer() => _buffer.Clear();
-    
+
     private string GetWord(WordBoundaries wordBoundaries) =>
         _buffer.Text.ToString(wordBoundaries.Start, wordBoundaries.Length);
 
@@ -185,6 +279,6 @@ public class LineEditor(AutocompletionProvider provider)
     }
 
     #endregion
-    
+
     #endregion
 }

@@ -1,36 +1,61 @@
-﻿using codecrafters_shell.Abstractions;
+﻿using System.Collections.Immutable;
+using codecrafters_shell.Abstractions;
 
 namespace codecrafters_shell.Autocomplete;
 
 public sealed class AutocompletionProvider(List<ICompletionSource> sources)
 {
     private string _lastPrefix = string.Empty;
-    private int _currentSuggestionIndex;
+    private int _currentSuggestionIdx;
 
-    private List<string> Suggestions { get; set; } = [];
+    private ImmutableList<string> Suggestions { get; set; } = [];
 
-    public void ProvideSuggestions(string prefix)
+    public void PrepareSuggestions(string prefix)
     {
-        _lastPrefix = IsNewPrefix(prefix) ? prefix : _lastPrefix;
-        foreach (var source in sources) Suggestions.AddRange(source.ProvideSuggestions(prefix).ToList());
+        if (!IsNewPrefix(prefix))
+            return;
+
+        Reset();
+        _lastPrefix = prefix;
+
+        var uniqueSuggestions = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var suggestion in sources.SelectMany(source => source.ProvideSuggestions(_lastPrefix)))
+        {
+            uniqueSuggestions.Add(suggestion);
+        }
+        
+        Suggestions = [..uniqueSuggestions.OrderBy(s => s, StringComparer.Ordinal)];
     }
 
     private void ToNext()
     {
-        if (_currentSuggestionIndex < Suggestions.Count - 1)
-            _currentSuggestionIndex++;
+        if (Suggestions.Count == 0) 
+            return; 
+        
+        _currentSuggestionIdx = (_currentSuggestionIdx + 1) % Suggestions.Count; // Cycling suggestions is okay
     }
 
     private void ToPrevious()
     {
-        if (_currentSuggestionIndex > 0)
-            _currentSuggestionIndex--;
+        if (_currentSuggestionIdx > 0)
+            _currentSuggestionIdx--;
+    }
+
+    public int GetSuggestionCount()
+    {
+        return Suggestions.Count;
+    }
+
+    public IReadOnlyList<string> GetSuggestions()
+    {
+        return Suggestions;
     }
 
     public string GetCurrentSuggestion()
     {
-        return Suggestions.Count > 0 && _currentSuggestionIndex < Suggestions.Count
-            ? Suggestions[_currentSuggestionIndex]
+        return Suggestions.Count > 0 && _currentSuggestionIdx < Suggestions.Count
+            ? Suggestions[_currentSuggestionIdx]
             : string.Empty;
     }
 
@@ -46,23 +71,15 @@ public sealed class AutocompletionProvider(List<ICompletionSource> sources)
         return GetCurrentSuggestion();
     }
 
-    public bool IsNewPrefix(string prefix)
+    private bool IsNewPrefix(string prefix)
     {
-        if (!IsCached())
-            return true;
-
-        return IsCached() && prefix != _lastPrefix;
+        return prefix != _lastPrefix;
     }
-
-    private bool IsCached()
-    {
-        return !string.IsNullOrEmpty(_lastPrefix);
-    }
-
+    
     public void Reset()
     {
         Suggestions = [];
-        _currentSuggestionIndex = 0;
+        _currentSuggestionIdx = 0;
         _lastPrefix = "";
     }
 }

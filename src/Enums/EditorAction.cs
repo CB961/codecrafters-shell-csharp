@@ -3,7 +3,8 @@
 [Flags]
 public enum EditorAction
 {
-    None = 0,
+    Continue = 0,
     AcceptLine = 1,
-    RingBell = 2
+    RingBell = 2,
+    ShowCompletions = 3
 }

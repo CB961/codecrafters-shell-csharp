@@ -27,6 +27,13 @@ public sealed class ReadLine(IConsole console, LineEditor editor, ILineRenderer 
             }
             
             renderer.Render(prompt, editor.GetText());
+
+            if (action == EditorAction.ShowCompletions)
+            {
+                console.WriteLine();
+                console.WriteLine(editor.GetCompletionList());
+                renderer.Render(prompt, editor.GetText());
+            }
             
             if (action == EditorAction.AcceptLine) 
                 break;
