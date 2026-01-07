@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Collections.Immutable;
+using System.Text;
 using codecrafters_shell.Autocomplete;
 using codecrafters_shell.Enums;
 
@@ -21,6 +22,12 @@ public class LineEditor(AutocompletionProvider provider)
             Cursor++;
         }
 
+        public void Insert(int start, string value)
+        {
+            Text.Insert(start, value);
+            Cursor = start + value.Length;
+        }
+
         private void MoveLeft() => Cursor = Math.Max(0, Cursor - 1);
         private void MoveRight() => Cursor = Math.Min(Text.Length, Cursor + 1);
 
@@ -37,10 +44,10 @@ public class LineEditor(AutocompletionProvider provider)
             Text.Remove(Cursor, 1);
         }
 
-        public void Replace(WordBoundaries boundaries, string suggestion)
+        public void Replace(WordBoundaries boundaries, string suggestion, bool trailingSpace)
         {
             Text.Remove(boundaries.Start, boundaries.Length);
-            Text.Insert(boundaries.Start, suggestion + " ");
+            Text.Insert(boundaries.Start, suggestion + (trailingSpace ? " " : ""));
             Cursor = Text.Length;
         }
     }
@@ -145,13 +152,28 @@ public class LineEditor(AutocompletionProvider provider)
         if (!_completionState.HasActiveSession)
         {
             provider.PrepareSuggestions(prefix);
-
-            if (provider.GetSuggestionCount() == 0)
+            var suggestionsCount = provider.GetSuggestionCount();
+            
+            if (suggestionsCount == 0)
                 return EditorAction.RingBell;
 
             _completionState.Start(boundaries, prefix);
         }
 
+        var suggestions = provider.GetSuggestions();
+
+        if (suggestions.Count > 1)
+        {
+            var lcp = LongestCommonPrefix(suggestions);
+
+            if (lcp.Length > prefix.Length)
+            {
+                PartialComplete(boundaries, lcp);
+                _completionState.Reset();
+                return EditorAction.Continue;
+            }
+        }
+        
         var suggestionCount = provider.GetSuggestionCount();
 
         return suggestionCount switch
@@ -192,19 +214,14 @@ public class LineEditor(AutocompletionProvider provider)
 
     private EditorAction CompleteMultiple()
     {
-        // if (_completionState.Prefix == "ech")
-        // {
-        //     Console.WriteLine("\n");
-        //     Console.WriteLine(string.Join("  ", provider.GetSuggestions()));
-        // }
+        
         switch (_completionState.Phase)
         {
             case AutocompletionState.CompletionPhase.None:
                 _completionState.AdvancePhase(AutocompletionState.CompletionPhase.AwaitingSecondTab);
                 return EditorAction.RingBell;
             case AutocompletionState.CompletionPhase.AwaitingSecondTab:
-                var suggestions = provider.GetSuggestions();
-                _completionState.SetCompletionList([..suggestions]);
+                _completionState.SetCompletionList([..provider.GetSuggestions()]);
                 _completionState.AdvancePhase(AutocompletionState.CompletionPhase.ShowingCompletions);
                 return EditorAction.ShowCompletions;
             case AutocompletionState.CompletionPhase.ShowingCompletions:
@@ -235,7 +252,12 @@ public class LineEditor(AutocompletionProvider provider)
 
     private void AutocompleteWord(WordBoundaries boundaries, string suggestion)
     {
-        _buffer.Replace(boundaries, suggestion);
+        _buffer.Replace(boundaries, suggestion, true);
+    }
+
+    private void PartialComplete(WordBoundaries boundaries, string commonPrefix)
+    {
+        _buffer.Replace(boundaries, commonPrefix, false);
     }
 
     private void ResetAutocomplete()
@@ -248,6 +270,27 @@ public class LineEditor(AutocompletionProvider provider)
 
     #region Helpers
 
+    private static string LongestCommonPrefix(IReadOnlyList<string> strings)
+    {
+        if (strings.Count == 0)
+            return string.Empty;
+
+        var copy = strings.ToList();
+        
+        Array.Sort([copy]);
+        
+        var first = strings[0];
+        var last = strings[^1];
+        var minLength = Math.Min(first.Length, last.Length);
+
+        var i = 0;
+
+        while (i < minLength && first[i] == last[i])
+            i++;
+
+        return first[..i];
+    }
+    
     public string GetText() => _buffer.Text.ToString();
 
     public void ClearBuffer() => _buffer.Clear();
