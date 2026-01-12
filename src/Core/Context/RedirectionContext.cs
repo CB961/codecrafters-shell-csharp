@@ -9,6 +9,7 @@ public sealed class RedirectionContext : IShellContext
 {
     public IReadOnlyDictionary<string, BuiltinRegistry.BuiltinHandler> Builtins { get; }
     public string CurrentDirectory { get; set; }
+    public TextReader StdIn { get; }
     public TextWriter StdOut { get; }
     public TextWriter StdErr { get; }
 
@@ -23,6 +24,7 @@ public sealed class RedirectionContext : IShellContext
     {
         Builtins = mainCtx.Builtins;
         CurrentDirectory = mainCtx.CurrentDirectory;
+        StdIn = mainCtx.StdIn;
         StdOut = redirectOutput ?? mainCtx.StdOut;
         StdErr = redirectError ?? mainCtx.StdErr;
         Env = mainCtx.Env;

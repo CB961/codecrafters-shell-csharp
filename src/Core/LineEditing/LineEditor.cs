@@ -1,9 +1,8 @@
-﻿using System.Collections.Immutable;
-using System.Text;
-using codecrafters_shell.Autocomplete;
+﻿using System.Text;
+using codecrafters_shell.Core.Autocomplete;
 using codecrafters_shell.Enums;
 
-namespace codecrafters_shell.Utilities.LineEditing;
+namespace codecrafters_shell.Core.LineEditing;
 
 public class LineEditor(AutocompletionProvider provider)
 {
@@ -122,7 +121,7 @@ public class LineEditor(AutocompletionProvider provider)
 
     #region fields
 
-    private WordBoundaries? _wordBoundaries;
+    // private WordBoundaries? _wordBoundaries;
 
     #endregion
 
@@ -158,20 +157,6 @@ public class LineEditor(AutocompletionProvider provider)
                 return EditorAction.RingBell;
 
             _completionState.Start(boundaries, prefix);
-        }
-
-        var suggestions = provider.GetSuggestions();
-
-        if (suggestions.Count > 1)
-        {
-            var lcp = LongestCommonPrefix(suggestions);
-
-            if (lcp.Length > prefix.Length)
-            {
-                PartialComplete(boundaries, lcp);
-                _completionState.Reset();
-                return EditorAction.Continue;
-            }
         }
         
         var suggestionCount = provider.GetSuggestionCount();
@@ -214,6 +199,22 @@ public class LineEditor(AutocompletionProvider provider)
 
     private EditorAction CompleteMultiple()
     {
+        var suggestions = provider.GetSuggestions();
+        
+        if (suggestions.Count > 1)
+        {
+            var lcp = LongestCommonPrefix(suggestions);
+
+            if (lcp.Length > _completionState.Prefix.Length)
+            {
+                PartialComplete(_completionState.Boundaries!, lcp);
+                
+                provider.RefinePrefix(lcp);
+                _completionState.Start(_completionState.Boundaries!, lcp);
+                
+                return EditorAction.Continue;
+            }
+        }
         
         switch (_completionState.Phase)
         {

@@ -1,4 +1,4 @@
-using codecrafters_shell.Autocomplete;
+using codecrafters_shell.Core.Autocomplete;
 using codecrafters_shell.Core.Context;
 using codecrafters_shell.Core;
 using codecrafters_shell.Interfaces;
@@ -6,7 +6,7 @@ using codecrafters_shell.Core.Lexing;
 using codecrafters_shell.Core.Registry;
 using codecrafters_shell.LineEditing;
 using codecrafters_shell.PathResolving;
-using codecrafters_shell.Utilities.LineEditing;
+using codecrafters_shell.Core.LineEditing;
 
 namespace codecrafters_shell;
 
@@ -17,7 +17,7 @@ internal static class Program
         #region Core setup
 
         var builtins = BuiltinRegistry.Create();
-        var shellCtx = new ShellContext(builtins, Console.Out, Console.Error);
+        var shellCtx = new ShellContext(builtins, Console.In, Console.Out, Console.Error);
         var lexer = new CommandLexer();
         var resolver = new PathResolver(shellCtx);
         var executor = new ProcessExecutor();

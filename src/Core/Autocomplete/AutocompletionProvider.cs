@@ -1,7 +1,7 @@
 ﻿using System.Collections.Immutable;
 using codecrafters_shell.Abstractions;
 
-namespace codecrafters_shell.Autocomplete;
+namespace codecrafters_shell.Core.Autocomplete;
 
 public sealed class AutocompletionProvider(List<ICompletionSource> sources)
 {
@@ -28,6 +28,16 @@ public sealed class AutocompletionProvider(List<ICompletionSource> sources)
         Suggestions = [..uniqueSuggestions.OrderBy(s => s, StringComparer.Ordinal)];
     }
 
+    public void RefinePrefix(string newPrefix)
+    {
+        _lastPrefix = newPrefix;
+        _currentSuggestionIdx = 0;
+
+        Suggestions = Suggestions
+            .Where(s => s.StartsWith(newPrefix, StringComparison.Ordinal))
+            .ToImmutableList();
+    }
+    
     private void ToNext()
     {
         if (Suggestions.Count == 0) 

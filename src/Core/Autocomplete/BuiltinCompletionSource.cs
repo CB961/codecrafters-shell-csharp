@@ -1,6 +1,6 @@
 ﻿using codecrafters_shell.Abstractions;
 
-namespace codecrafters_shell.Autocomplete;
+namespace codecrafters_shell.Core.Autocomplete;
 
 public class BuiltinCompletionSource(IReadOnlyList<string> builtins) : ICompletionSource
 {

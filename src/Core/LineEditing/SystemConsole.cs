@@ -1,6 +1,6 @@
 ﻿using codecrafters_shell.Abstractions;
 
-namespace codecrafters_shell.Utilities.LineEditing;
+namespace codecrafters_shell.Core.LineEditing;
 
 public class SystemConsole : IConsole
 {

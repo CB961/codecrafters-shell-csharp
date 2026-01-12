@@ -1,7 +1,7 @@
 ﻿using codecrafters_shell.Abstractions;
 using codecrafters_shell.Enums;
 
-namespace codecrafters_shell.Utilities.LineEditing;
+namespace codecrafters_shell.Core.LineEditing;
 
 public sealed class ReadLine(IConsole console, LineEditor editor, ILineRenderer renderer)
 {

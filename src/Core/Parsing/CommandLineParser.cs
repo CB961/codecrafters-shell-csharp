@@ -1,5 +1,7 @@
 ﻿using System.Collections.Immutable;
+using System.IO.Pipelines;
 using codecrafters_shell.Core.Parsing.Ast;
+using codecrafters_shell.Exceptions;
 
 namespace codecrafters_shell.Core.Parsing;
 
@@ -7,22 +9,39 @@ public class CommandLineParser(IEnumerable<Token> tokens)
 {
     private readonly List<Token> _tokens = tokens.ToList();
     private int _pos;
+    private List<SimpleCommand> _commands = [];
 
-    public SimpleCommand ParseCommand()
+    public PipelineCommand ParsePipeline()
+    {
+        while (!AtEnd())
+        {
+            _commands.Add(ParseSimpleCommand());
+        }
+        return new PipelineCommand([.._commands]);
+    }
+
+    private SimpleCommand ParseSimpleCommand()
     {
         var nameToken = Consume(TokenType.Word);
         var name = nameToken.Value;
         var args = new List<ArgumentNode>();
         var redirects = new List<RedirectNode>();
-
+        
         while (!AtEnd())
+        {
             if (Match(TokenType.Redirect))
                 redirects.Add(ParseRedirect());
             else if (Match(TokenType.Word))
                 args.Add(new LiteralArgument(Advance().Value));
+            else if (Match(TokenType.Pipeline))
+            {
+                Consume(TokenType.Pipeline);
+                return new SimpleCommand(new CommandName(name), args.ToImmutableList(), redirects.ToImmutableList());
+            }
             else
                 throw new ParseException($"Unexpected token: {Peek().Type}");
-
+        }
+        
         return new SimpleCommand(new CommandName(name), args.ToImmutableList(), redirects.ToImmutableList());
     }
 

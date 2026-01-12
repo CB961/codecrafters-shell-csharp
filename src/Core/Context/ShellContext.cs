@@ -10,6 +10,7 @@ public sealed class ShellContext : IShellContext
 {
     public IReadOnlyDictionary<string, BuiltinRegistry.BuiltinHandler> Builtins { get; }
     public string CurrentDirectory { get; set; } = Environment.CurrentDirectory;
+    public TextReader StdIn { get; }
     public TextWriter StdOut { get; }
     public TextWriter StdErr { get; }
 
@@ -22,11 +23,13 @@ public sealed class ShellContext : IShellContext
 
     public ShellContext(
         IReadOnlyDictionary<string, BuiltinRegistry.BuiltinHandler> builtins,
+        TextReader input,
         TextWriter output,
         TextWriter error
     )
     {
         Builtins = builtins;
+        StdIn = input;
         StdOut = output;
         StdErr = error;
         PathResolver = new PathResolver(this);

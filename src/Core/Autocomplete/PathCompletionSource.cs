@@ -2,7 +2,7 @@
 using codecrafters_shell.Abstractions;
 using codecrafters_shell.PathResolving;
 
-namespace codecrafters_shell.Autocomplete;
+namespace codecrafters_shell.Core.Autocomplete;
 
 public class PathCompletionSource(PathResolver resolver) : ICompletionSource
 {

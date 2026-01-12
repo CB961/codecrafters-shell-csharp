@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using codecrafters_shell.Exceptions;
 
 namespace codecrafters_shell.Core.Lexing;
 
@@ -52,6 +53,11 @@ public class CommandLexer
             if (!inSingleQuotes && !inDoubleQuotes)
                 switch (c)
                 {
+                    case '|':
+                        FlushWord();
+                        Tokens.Add(new Token(TokenType.Pipeline, $"{c}"));
+                        i++;
+                        continue;
                     // 1> or 2>
                     case '1' or '2' when i + 1 < input.Length && input[i + 1] == '>':
                         FlushWord();

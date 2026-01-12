@@ -4,7 +4,7 @@ using codecrafters_shell.Core.Parsing;
 using codecrafters_shell.Core.Parsing.Ast;
 using codecrafters_shell.Interfaces;
 using codecrafters_shell.src.Interfaces;
-using codecrafters_shell.Utilities.LineEditing;
+using codecrafters_shell.Core.LineEditing;
 
 namespace codecrafters_shell.Core;
 
@@ -26,12 +26,12 @@ public class Shell(
             var tokens = lexer.Tokens;
 
             var parser = new CommandLineParser(tokens);
-            var commandLine = parser.ParseCommand();
+            var commandLine = parser.ParsePipeline();
 
             var cmdTree = new CommandTree(commandLine);
             var evaluator = new CommandEvaluator(context, resolver, executor);
-            evaluator.Evaluate(cmdTree);
+            var result = evaluator.Evaluate(cmdTree);
         } while (true);
         // ReSharper disable once FunctionNeverReturns
     }
-}
+} 
