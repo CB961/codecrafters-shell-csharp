@@ -8,8 +8,12 @@ public class CommandTreePrinter : CommandTreeTraverser
 
         Console.WriteLine(node switch
         {
-            SimpleCommand => $"{pad}SimpleCommand",
-            PipelineCommand => $"{pad}Pipeline",
+            SimpleCommand simpleCommand => 
+                $"{pad}SimpleCommand\n" +
+                $"{pad}Name: {simpleCommand.Name}\n" +
+                $"{pad}Redirects: {simpleCommand.Redirects.Count > 0}"
+            ,
+            PipelineCommand pipelineCommand => $"{pad}Pipeline",
             _ => $"{pad}{node.GetType().Name}"
         });
     }

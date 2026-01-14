@@ -29,6 +29,9 @@ public class Shell(
             var commandLine = parser.ParsePipeline();
 
             var cmdTree = new CommandTree(commandLine);
+            // var treePrinter = new CommandTreePrinter();
+            // treePrinter.Traverse(cmdTree.Root);
+            
             var evaluator = new CommandEvaluator(context, resolver, executor);
             var result = evaluator.Evaluate(cmdTree);
         } while (true);

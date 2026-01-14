@@ -7,7 +7,7 @@ namespace codecrafters_shell.PathResolving;
 public class PathResolver(IShellContext context) : IPathResolver
 {
     private string[] _cachedPaths = [];
-    
+
     private ImmutableArray<string> CachedExecutables { get; set; } = [];
 
     private string[] GetPathDirectories()
@@ -19,12 +19,12 @@ public class PathResolver(IShellContext context) : IPathResolver
     public ImmutableArray<string> GetExecutablesFromPath()
     {
         var paths = GetPathDirectories();
-        
+
         if (CachedExecutables.Length > 0 && paths == _cachedPaths)
             return CachedExecutables;
-        
+
         _cachedPaths = paths;
-        
+
         var seen = new HashSet<string>(StringComparer.Ordinal);
         var files = new List<string>();
 

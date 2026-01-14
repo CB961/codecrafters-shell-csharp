@@ -12,13 +12,4 @@ public interface IProcessExecutor
         bool redirectOutput,
         bool redirectError
     );
-    
-    // int Execute(
-    //     string filePath,
-    //     IReadOnlyList<string> args,
-    //     IShellContext context,
-    //     bool redirectInput,
-    //     bool redirectOutput,
-    //     bool redirectError
-    // );
 }
