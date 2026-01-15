@@ -1,4 +1,7 @@
-﻿using codecrafters_shell.Helpers;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using codecrafters_shell.Helpers;
 using codecrafters_shell.Interfaces;
 
 namespace codecrafters_shell.Core.Registry;
@@ -15,9 +18,10 @@ public static class BuiltinRegistry
         return new Dictionary<string, BuiltinHandler>(StringComparer.OrdinalIgnoreCase)
         {
             ["exit"] = Exit,
-            ["pwd"] = Pwd,
             ["cd"] = Cd,
             ["echo"] = Echo,
+            ["history"] = History,
+            ["pwd"] = Pwd,
             ["type"] = Type
         };
     }
@@ -63,6 +67,11 @@ public static class BuiltinRegistry
         return 0;
     }
 
+    private static int History(IReadOnlyList<string> args, IShellContext context)
+    {
+        return 0;
+    }
+    
     private static int Type(IReadOnlyList<string> args, IShellContext context)
     {
         var arg = args.Count > 0 ? args[0] : null;

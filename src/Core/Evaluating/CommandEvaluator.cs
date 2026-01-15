@@ -12,32 +12,32 @@ namespace codecrafters_shell.Core.Evaluating;
 public sealed class CommandEvaluator
 {
     #region Nested Types
-    
-        private sealed class PipelineStage(string name, List<string> args, StageKind kind)
-        {
-            public string Name { get; } = name;
-            public List<string> Args { get; } = args;
-    
-            public Pipe? InputPipe { get; set; }
-            public Pipe? OutputPipe { get; set; }
-    
-            public Process? Process { get; set; }
-            public Task<int>? BuiltinTask { get; set; }
-    
-            public StageKind Kind { get; } = kind;
-        }
-    
-        #endregion
-    
+
+    private sealed class PipelineStage(string name, List<string> args, StageKind kind)
+    {
+        public string Name { get; } = name;
+        public List<string> Args { get; } = args;
+
+        public Pipe? InputPipe { get; set; }
+        public Pipe? OutputPipe { get; set; }
+
+        public Process? Process { get; set; }
+        public Task<int>? BuiltinTask { get; set; }
+
+        public StageKind Kind { get; } = kind;
+    }
+
+    #endregion
+
     #region Dependencies
-    
+
     private readonly ArgumentEvaluator _argEvaluator;
     private readonly IShellContext _context;
     private readonly IPathResolver _resolver;
     private readonly IProcessExecutor _executor;
 
     #endregion
-    
+
     #region Constructors
 
     public CommandEvaluator(
@@ -75,7 +75,7 @@ public sealed class CommandEvaluator
     {
         if (plc.Commands.Count == 0)
             return -1;
-        
+
         // Staging phase
         var stages = plc.Commands
             .Cast<SimpleCommand>()
@@ -103,7 +103,7 @@ public sealed class CommandEvaluator
 
             var lastStage = stages[^1];
             CreateForwardingProcessOutputTasks(lastStage, ref tasks);
-            
+
             Task.WaitAll(tasks.ToArray());
 
             foreach (var stage in stages.Where(stage => stage.Kind == StageKind.External && !stage.Process!.HasExited))
@@ -115,7 +115,7 @@ public sealed class CommandEvaluator
             {
                 stage.BuiltinTask?.Wait();
             }
-            
+
             return lastStage.Kind switch
             {
                 StageKind.External => lastStage.Process!.ExitCode,
@@ -134,9 +134,9 @@ public sealed class CommandEvaluator
                     if (!p.HasExited)
                         p.Kill();
                 }
-                catch
+                catch (Exception pEx)
                 {
-                    // Ignore
+                    Debug.WriteLine(pEx.Message);
                 }
             }
 
@@ -167,8 +167,8 @@ public sealed class CommandEvaluator
         var lastProcess = lastStage.Process!;
 
         if (lastStage.Kind != StageKind.External) return;
-        tasks.Add(ForwardAsync(lastProcess.StandardOutput, _context.StdOut));
-        tasks.Add(ForwardAsync(lastProcess.StandardError, _context.StdErr));
+        tasks.Add(ForwardAsync(lastProcess.StandardOutput.BaseStream, _context.StdOut));
+        tasks.Add(ForwardAsync(lastProcess.StandardError.BaseStream, _context.StdErr));
     }
 
     private int WireStages(List<PipelineStage> stages, List<Process> processes, List<Task> tasks)
@@ -250,7 +250,7 @@ public sealed class CommandEvaluator
 
         return 0;
     }
-    
+
     private static async Task StreamToPipeAsync(
         Stream source,
         PipeWriter writer,
@@ -283,7 +283,7 @@ public sealed class CommandEvaluator
             await writer.CompleteAsync();
         }
     }
-    
+
     private static async Task PipeToStreamAsync(
         PipeReader reader,
         Stream destination,
@@ -321,152 +321,22 @@ public sealed class CommandEvaluator
     }
 
     private static async Task ForwardAsync(
-        StreamReader reader,
+        Stream source,
         TextWriter writer)
     {
-        while (await reader.ReadLineAsync() is { } line)
+        using var reader = new StreamReader(source);
+
+        var buffer = new char[4096];
+        int read;
+
+        while ((read = await reader.ReadAsync(buffer, 0, buffer.Length)) > 0)
         {
-            await writer.WriteLineAsync(line);
+            await writer.WriteAsync(buffer, 0, read);
             await writer.FlushAsync();
         }
     }
 
     #endregion
-    
-    /*private int ExecutePipeline(PipelineCommand plc)
-    {
-        var commands = plc.Commands;
-        var cmdCount = commands.Count;
-
-        var tasks = new List<Task>();
-        var processes = new List<Process>();
-
-        Pipe? previousPipe = null;
-        Process? previousProcess = null;
-
-        try
-        {
-            for (var i = 0; i < cmdCount; i++)
-            {
-                var cmd = (SimpleCommand)commands[i];
-                var name = cmd.Name.Value;
-                var args = _argEvaluator.EvaluateAll(cmd.Arguments);
-
-                var isFirst = i == 0;
-                var isLast = i == cmdCount - 1;
-
-                var currentPipe = isLast ? null : new Pipe();
-
-                var stdin =
-                    i == 0
-                        ? ReaderToStream(_context.StdIn)
-                        : previousPipe!.Reader.AsStream();
-
-                var stdout =
-                    isLast
-                        ? previousPipe!.Writer.AsStream()
-                        : currentPipe!.Writer.AsStream();
-
-                if (IsBuiltin(name, _context))
-                {
-                    Task.Run(() =>
-                    {
-                        using var reader = new StreamReader(stdin);
-                        using var writer = new StreamWriter(stdout);
-                        writer.AutoFlush = true;
-
-                        var ctx = new ShellContext(
-                            _context.Builtins,
-                            reader,
-                            writer,
-                            _context.StdErr
-                        );
-
-                        ExecuteBuiltin(name, args.ToArray(), ctx);
-                        writer.Flush();
-                        stdout.Close();
-                    });
-
-                    previousPipe = currentPipe;
-                    // _context.StdErr.WriteLine("Builtins are currently not supported in pipelines");
-                    // return 1;
-                }
-                else
-                {
-                    if (!ExecutableIsInPath(name, out var fullPath))
-                    {
-                        _context.StdErr.WriteLine($"{name}: command not found");
-                        return 127;
-                    }
-
-                    var process = _executor.Start(
-                        fullPath,
-                        args,
-                        _context,
-                        !isFirst,
-                        true,
-                        true
-                    );
-                    processes.Add(process);
-
-                    if (previousProcess != null && previousPipe != null)
-                    {
-                        tasks.Add(StreamToPipeAsync(
-                            previousProcess.StandardOutput.BaseStream,
-                            previousPipe.Writer)
-                        );
-
-                        tasks.Add(PipeToStreamAsync(
-                            previousPipe.Reader,
-                            process.StandardInput.BaseStream)
-                        );
-                    }
-
-                    if (isLast)
-                    {
-                        tasks.Add(ForwardAsync(process.StandardOutput, _context.StdOut));
-                        tasks.Add(ForwardAsync(process.StandardError, _context.StdErr));
-                    }
-
-                    previousProcess = process;
-                    previousPipe = currentPipe;
-                }
-            }
-
-            Task.WaitAll(tasks.ToArray());
-
-            foreach (var p in processes.Where(p => !p.HasExited))
-            {
-                p.WaitForExit();
-            }
-
-            return processes.Last().ExitCode;
-        }
-        catch (Exception ex)
-        {
-            _context.StdErr.WriteLine($"Pipeline error: {ex.Message}");
-
-            foreach (var p in processes)
-            {
-                try
-                {
-                    if (!p.HasExited)
-                        p.Kill();
-                }
-                catch
-                {
-                    // Ignore
-                }
-            }
-
-            return -1;
-        }
-        finally
-        {
-            foreach (var p in processes)
-                p.Dispose();
-        }
-    }*/
 
     private int ExecuteSingleCommand(SimpleCommand sc,
         IShellContext context,
@@ -488,8 +358,13 @@ public sealed class CommandEvaluator
         return ExecuteCommand(cmd, args, context, redirectInput, redirectOutput, redirectOutput);
     }
 
-    private int ExecuteCommand(string command, IReadOnlyList<string> arguments, IShellContext context,
-        bool redirectInput, bool redirectOutput, bool redirectError)
+    private int ExecuteCommand(string command,
+        IReadOnlyList<string> arguments,
+        IShellContext context,
+        bool redirectInput,
+        bool redirectOutput,
+        bool redirectError
+    )
     {
         const int errorCommandNotFound = 0x16;
 
@@ -551,9 +426,13 @@ public sealed class CommandEvaluator
         return !string.IsNullOrEmpty(fullPath);
     }
 
-    private Process StartProcess(string fullPath, string[] args, IShellContext context, bool redirectInput,
-        bool redirectOutput, bool redirectError)
-        => _executor.Start(fullPath, args, context, redirectInput, redirectOutput, redirectError);
+    private Process StartProcess(string fullPath,
+        string[] args,
+        IShellContext context,
+        bool redirectInput,
+        bool redirectOutput,
+        bool redirectError
+    ) => _executor.Start(fullPath, args, context, redirectInput, redirectOutput, redirectError);
 
     #endregion
 }
