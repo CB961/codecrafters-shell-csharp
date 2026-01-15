@@ -1,5 +1,6 @@
 ﻿using codecrafters_shell.Helpers;
 using codecrafters_shell.Interfaces;
+using static System.Int32;
 
 namespace codecrafters_shell.Core.Registry;
 
@@ -25,7 +26,7 @@ public static class BuiltinRegistry
 
     private static int Exit(IReadOnlyList<string> args, IShellContext context)
     {
-        var code = args.Count > 0 && int.TryParse(args[0], out var result)
+        var code = args.Count > 0 && TryParse(args[0], out var result)
             ? result
             : 0;
 
@@ -68,8 +69,17 @@ public static class BuiltinRegistry
     {
         var historyItems = context.History;
         
+        var limit = 0;
+        var result = args.Any() && TryParse(args[0], out limit);
+        var boundary = result ? historyItems.Count - limit : 0;
+        
+        
         for (var i = 0; i < historyItems.Count; i++)
         {
+            if (result && i < boundary)
+            {
+                continue;
+            }
             context.StdOut.WriteLine($"    {i + 1}  {historyItems[i]}");
         }
 
