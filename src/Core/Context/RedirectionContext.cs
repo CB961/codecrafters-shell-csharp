@@ -8,6 +8,7 @@ namespace codecrafters_shell.Core.Context;
 public sealed class RedirectionContext : IShellContext
 {
     public IReadOnlyDictionary<string, BuiltinRegistry.BuiltinHandler> Builtins { get; }
+    public List<string> History { get; set; }
     public string CurrentDirectory { get; set; }
     public TextReader StdIn { get; }
     public TextWriter StdOut { get; }
@@ -23,6 +24,7 @@ public sealed class RedirectionContext : IShellContext
     )
     {
         Builtins = mainCtx.Builtins;
+        History = mainCtx.History;
         CurrentDirectory = mainCtx.CurrentDirectory;
         StdIn = mainCtx.StdIn;
         StdOut = redirectOutput ?? mainCtx.StdOut;

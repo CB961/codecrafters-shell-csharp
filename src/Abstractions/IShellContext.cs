@@ -6,6 +6,7 @@ namespace codecrafters_shell.Interfaces;
 public interface IShellContext
 {
     IReadOnlyDictionary<string, BuiltinRegistry.BuiltinHandler> Builtins { get; }
+    List<string> History { get; set; }
     string CurrentDirectory { get; set; }
     TextReader StdIn { get; }
     TextWriter StdOut { get; }

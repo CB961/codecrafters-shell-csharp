@@ -37,7 +37,7 @@ internal static class Program
         var console = new SystemConsole();
         var editor = new LineEditor(provider);
         var renderer = new SimpleLineRenderer(console);
-        var readLine = new ReadLine(console, editor, renderer);
+        var readLine = new ReadLine(console, editor, renderer, shellCtx.History);
 
         #endregion
         

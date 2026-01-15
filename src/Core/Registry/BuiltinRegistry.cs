@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using codecrafters_shell.Helpers;
+﻿using codecrafters_shell.Helpers;
 using codecrafters_shell.Interfaces;
 
 namespace codecrafters_shell.Core.Registry;
@@ -69,6 +66,13 @@ public static class BuiltinRegistry
 
     private static int History(IReadOnlyList<string> args, IShellContext context)
     {
+        var historyItems = context.History;
+        
+        for (var i = 0; i < historyItems.Count; i++)
+        {
+            context.StdOut.WriteLine($"    {i + 1}  {historyItems[i]}");
+        }
+
         return 0;
     }
     
