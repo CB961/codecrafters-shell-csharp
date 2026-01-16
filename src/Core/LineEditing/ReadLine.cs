@@ -1,10 +1,10 @@
 ﻿using codecrafters_shell.Abstractions;
-using codecrafters_shell.Core.Context;
+using codecrafters_shell.Core.History;
 using codecrafters_shell.Enums;
 
 namespace codecrafters_shell.Core.LineEditing;
 
-public sealed class ReadLine(IConsole console, LineEditor editor, ILineRenderer renderer, List<string> history)
+public sealed class ReadLine(IConsole console, LineEditor editor, ILineRenderer renderer, CommandHistory history)
 {
     public string Read(string prompt)
     {
@@ -43,7 +43,7 @@ public sealed class ReadLine(IConsole console, LineEditor editor, ILineRenderer 
         console.WriteLine();
         var result = editor.GetText();
         editor.ClearBuffer();
-        history.Add(result);
+        history.Record(result);
         return result;
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using codecrafters_shell.Core.History;
 using codecrafters_shell.Core.Registry;
 using codecrafters_shell.Interfaces;
 using codecrafters_shell.PathResolving;
@@ -9,7 +10,7 @@ namespace codecrafters_shell.Core.Context;
 public sealed class ShellContext : IShellContext
 {
     public IReadOnlyDictionary<string, BuiltinRegistry.BuiltinHandler> Builtins { get; }
-    public List<string> History { get; set; } = [];
+    public CommandHistory History { get; } = new();
     public string CurrentDirectory { get; set; } = Environment.CurrentDirectory;
     public TextReader StdIn { get; }
     public TextWriter StdOut { get; }

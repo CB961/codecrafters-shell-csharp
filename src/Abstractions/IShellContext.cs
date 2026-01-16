@@ -1,4 +1,5 @@
-﻿using codecrafters_shell.Core.Registry;
+﻿using codecrafters_shell.Core.History;
+using codecrafters_shell.Core.Registry;
 using codecrafters_shell.src.Interfaces;
 
 namespace codecrafters_shell.Interfaces;
@@ -6,7 +7,8 @@ namespace codecrafters_shell.Interfaces;
 public interface IShellContext
 {
     IReadOnlyDictionary<string, BuiltinRegistry.BuiltinHandler> Builtins { get; }
-    List<string> History { get; set; }
+    // List<string> History { get; }
+    CommandHistory History { get; }
     string CurrentDirectory { get; set; }
     TextReader StdIn { get; }
     TextWriter StdOut { get; }

@@ -35,7 +35,7 @@ internal static class Program
         #region Line editor setup
         
         var console = new SystemConsole();
-        var editor = new LineEditor(provider);
+        var editor = new LineEditor(provider, shellCtx.History);
         var renderer = new SimpleLineRenderer(console);
         var readLine = new ReadLine(console, editor, renderer, shellCtx.History);
 

@@ -1,4 +1,5 @@
-﻿using codecrafters_shell.Core.Registry;
+﻿using codecrafters_shell.Core.History;
+using codecrafters_shell.Core.Registry;
 using codecrafters_shell.Interfaces;
 using codecrafters_shell.PathResolving;
 using codecrafters_shell.src.Interfaces;
@@ -8,7 +9,7 @@ namespace codecrafters_shell.Core.Context;
 public sealed class RedirectionContext : IShellContext
 {
     public IReadOnlyDictionary<string, BuiltinRegistry.BuiltinHandler> Builtins { get; }
-    public List<string> History { get; set; }
+    public CommandHistory History { get; }
     public string CurrentDirectory { get; set; }
     public TextReader StdIn { get; }
     public TextWriter StdOut { get; }

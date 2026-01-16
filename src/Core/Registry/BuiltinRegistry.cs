@@ -67,12 +67,12 @@ public static class BuiltinRegistry
 
     private static int History(IReadOnlyList<string> args, IShellContext context)
     {
-        var historyItems = context.History;
+        var historyItems = context.History.GetCommandHistory();
+        
         
         var limit = 0;
         var result = args.Any() && TryParse(args[0], out limit);
         var boundary = result ? historyItems.Count - limit : 0;
-        
         
         for (var i = 0; i < historyItems.Count; i++)
         {

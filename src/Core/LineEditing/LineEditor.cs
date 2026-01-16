@@ -1,10 +1,11 @@
 ﻿using System.Text;
 using codecrafters_shell.Core.Autocomplete;
+using codecrafters_shell.Core.History;
 using codecrafters_shell.Enums;
 
 namespace codecrafters_shell.Core.LineEditing;
 
-public class LineEditor(AutocompletionProvider provider)
+public class LineEditor(AutocompletionProvider provider, CommandHistory history)
 {
     #region Nested Types
 
@@ -116,6 +117,7 @@ public class LineEditor(AutocompletionProvider provider)
 
     private readonly LineBuffer _buffer = new();
     private readonly AutocompletionState _completionState = new();
+    private CommandHistory _history = history;
 
     #endregion
 
@@ -131,6 +133,8 @@ public class LineEditor(AutocompletionProvider provider)
     {
         return key.Key switch
         {
+            ConsoleKey.UpArrow => PrevHistory(),
+            ConsoleKey.DownArrow => NextHistory(),
             ConsoleKey.Tab => HandleTab(),
             ConsoleKey.Backspace => HandleBackspace(),
             ConsoleKey.Enter => EditorAction.AcceptLine,
@@ -139,6 +143,34 @@ public class LineEditor(AutocompletionProvider provider)
     }
 
     #region Handlers
+    
+    private EditorAction PrevHistory()
+    {
+        if (_history.WasHistoryBrowsed() && _history.BrowserAtFirstPos())
+            return EditorAction.RingBell;
+
+        var prev = _history.GetPrevious();
+        ReplaceCurrentInput(prev);
+
+        return EditorAction.Continue;
+    }
+
+    private EditorAction NextHistory()
+    {
+        if (_history.WasHistoryBrowsed() && _history.BrowserAtLastPos())
+            return EditorAction.RingBell;
+            
+        var next = _history.GetNext();
+        ReplaceCurrentInput(next);
+
+        return EditorAction.Continue;
+    }
+
+    private void ReplaceCurrentInput(string current)
+    {
+        _buffer.Clear();
+        _buffer.Insert(0, current);
+    }
 
     private EditorAction HandleTab()
     {
