@@ -117,7 +117,6 @@ public class LineEditor(AutocompletionProvider provider, CommandHistory history)
 
     private readonly LineBuffer _buffer = new();
     private readonly AutocompletionState _completionState = new();
-    private CommandHistory _history = history;
 
     #endregion
 
@@ -146,10 +145,10 @@ public class LineEditor(AutocompletionProvider provider, CommandHistory history)
     
     private EditorAction PrevHistory()
     {
-        if (_history.WasHistoryBrowsed() && _history.BrowserAtFirstPos())
+        if (history is { HasBeenBrowsed: true, IsAtFirstPos: true })
             return EditorAction.RingBell;
 
-        var prev = _history.GetPrevious();
+        var prev = history.GetPrevious();
         ReplaceCurrentInput(prev);
 
         return EditorAction.Continue;
@@ -157,10 +156,10 @@ public class LineEditor(AutocompletionProvider provider, CommandHistory history)
 
     private EditorAction NextHistory()
     {
-        if (_history.WasHistoryBrowsed() && _history.BrowserAtLastPos())
+        if (history is { HasBeenBrowsed: true, IsAtLastPos: true })
             return EditorAction.RingBell;
             
-        var next = _history.GetNext();
+        var next = history.GetNext();
         ReplaceCurrentInput(next);
 
         return EditorAction.Continue;

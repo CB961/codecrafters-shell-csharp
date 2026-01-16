@@ -3,20 +3,17 @@
 public sealed class CommandHistory
 {
     private int _currentIndex;
-    private bool _historyWasBrowsed;
 
     private List<string> UsedCommands { get; } = [];
-
-    
     public bool IsEmpty => UsedCommands.Count == 0;
-    public bool BrowserAtFirstPos() => !IsEmpty && _currentIndex == 0;
-    public bool BrowserAtLastPos() => !IsEmpty && _currentIndex == UsedCommands.Count - 1;
-    public bool WasHistoryBrowsed() => _historyWasBrowsed;
-    
+    public bool IsAtFirstPos => !IsEmpty && _currentIndex == 0;
+    public bool IsAtLastPos => !IsEmpty && _currentIndex == UsedCommands.Count - 1;
+    public bool HasBeenBrowsed { get; private set; }
+
     public void Record(string command)
     {
         UsedCommands.Add(command);
-        _historyWasBrowsed = false;
+        HasBeenBrowsed = false;
         _currentIndex = UsedCommands.Count - 1;
     }
     
@@ -29,8 +26,8 @@ public sealed class CommandHistory
         
         ToNext();
         
-        if (!_historyWasBrowsed)
-            _historyWasBrowsed = true;
+        if (!HasBeenBrowsed)
+            HasBeenBrowsed = true;
         
         return GetCurrent();
     }
@@ -40,9 +37,9 @@ public sealed class CommandHistory
         if (IsEmpty)
             return string.Empty;
         
-        if (!_historyWasBrowsed)
+        if (!HasBeenBrowsed)
         {
-            _historyWasBrowsed = true;
+            HasBeenBrowsed = true;
             return GetLast();
         }
 

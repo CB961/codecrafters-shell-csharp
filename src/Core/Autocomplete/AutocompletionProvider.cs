@@ -57,10 +57,7 @@ public sealed class AutocompletionProvider(List<ICompletionSource> sources)
         return Suggestions.Count;
     }
 
-    public IReadOnlyList<string> GetSuggestions()
-    {
-        return Suggestions;
-    }
+    public IReadOnlyList<string> GetSuggestions() => Suggestions;
 
     public string GetCurrentSuggestion()
     {
@@ -81,11 +78,8 @@ public sealed class AutocompletionProvider(List<ICompletionSource> sources)
         return GetCurrentSuggestion();
     }
 
-    private bool IsNewPrefix(string prefix)
-    {
-        return prefix != _lastPrefix;
-    }
-    
+    private bool IsNewPrefix(string prefix) => prefix != _lastPrefix;
+
     public void Reset()
     {
         Suggestions = [];
