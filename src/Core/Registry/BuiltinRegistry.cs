@@ -1,4 +1,5 @@
-﻿using codecrafters_shell.Helpers;
+﻿using codecrafters_shell.Core.History;
+using codecrafters_shell.Helpers;
 using codecrafters_shell.Interfaces;
 using static System.Int32;
 
@@ -68,22 +69,31 @@ public static class BuiltinRegistry
     private static int History(IReadOnlyList<string> args, IShellContext context)
     {
         var hasArgs = args.Any();
+        var historyProvider = context.History;
         
-        if (hasArgs && args is ["-r", var filePath])
+        switch (hasArgs)
         {
-            var fullPath = Path.GetFullPath(filePath);
-
-            if (File.Exists(fullPath))
+            case true when args is ["-r", var filePath]:
             {
-                context.History.LoadFromFile(fullPath);
-                return 0;
-            }
+                var fullPath = Path.GetFullPath(filePath);
+
+                if (File.Exists(fullPath))
+                {
+                    return historyProvider.LoadFromFile(fullPath);
+                }
             
-            context.StdErr.WriteLine($"history: {filePath}: File doesn't exist!");
-            return 1;
+                context.StdErr.WriteLine($"history: {filePath}: File doesn't exist!");
+                return 1;
+            }
+            case true when args is ["-w", var filePath]:
+            {
+                var fullPath = Path.GetFullPath(filePath);
+
+                return historyProvider.WriteToFile(fullPath);
+            }
         }
-        
-        var history = context.History.GetCommandHistory();
+        var history = historyProvider.GetCommandHistory();
+
         var count = history.Count;
         
         var limit = count;

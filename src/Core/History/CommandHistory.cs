@@ -4,6 +4,7 @@ public sealed class CommandHistory
 {
     private int _currentIndex;
 
+    private List<string> UsedCommandsCurrentSession { get; } = [];
     private List<string> UsedCommands { get; } = [];
     public bool IsEmpty => UsedCommands.Count == 0;
     public bool IsAtFirstPos => !IsEmpty && _currentIndex == 0;
@@ -13,24 +14,57 @@ public sealed class CommandHistory
     public void Record(string command)
     {
         UsedCommands.Add(command);
+        UsedCommandsCurrentSession.Add(command);
         HasBeenBrowsed = false;
         _currentIndex = UsedCommands.Count - 1;
     }
 
-    public void LoadFromFile(string filePath)
+    public int LoadFromFile(string filePath)
     {
         var fullPath = Path.GetFullPath(filePath);
 
         if (!File.Exists(fullPath))
-            return;
+            return -1;
 
-        using var file = File.OpenText(fullPath);
-
-        foreach (var line in File.ReadLines(fullPath))
+        try
         {
-            if (!string.IsNullOrWhiteSpace(line))
-                UsedCommands.Add(line);
+            foreach (var line in File.ReadLines(fullPath))
+            {
+                if (!string.IsNullOrWhiteSpace(line))
+                    UsedCommands.Add(line);
+            }
         }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine(ex.Message);
+            return 1;
+        }
+
+        return 0;
+    }
+
+    public int WriteToFile(string filePath)
+    {
+        var fullPath = Path.GetFullPath(filePath);
+
+        if (UsedCommandsCurrentSession.Count == 0)
+            return -1;
+
+        using var outputFile = new StreamWriter(fullPath);
+        try
+        {
+            foreach (var cmd in UsedCommandsCurrentSession)
+            {
+                outputFile.WriteLine(cmd);
+            }
+        }
+        catch (Exception e)
+        {
+            Console.Error.WriteLine(e.Message);
+            return -1;
+        }
+        
+        return 0;
     }
     
     public string GetCurrent() => !IsEmpty ? UsedCommands[_currentIndex] : string.Empty;
