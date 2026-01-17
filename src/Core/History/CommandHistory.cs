@@ -121,4 +121,9 @@ public sealed class CommandHistory
         if (_currentIndex < UsedCommands.Count - 1)
             _currentIndex++;
     }
+
+    public void SaveSessionToHistFile(string histFile)
+    {
+        WriteToFile(histFile);
+    }
 }

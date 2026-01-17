@@ -26,6 +26,12 @@ public static class BuiltinRegistry
 
     private static int Exit(IReadOnlyList<string> args, IShellContext context)
     {
+        var obtained = context.Env.TryGetValue("HISTFILE", out var histFile);
+        if (obtained && !string.IsNullOrEmpty(histFile))
+        {
+            context.History.SaveSessionToHistFile(histFile);
+        }
+        
         var code = args.Count > 0 && TryParse(args[0], out var result)
             ? result
             : 0;
