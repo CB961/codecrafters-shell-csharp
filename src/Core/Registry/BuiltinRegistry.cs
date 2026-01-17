@@ -71,12 +71,18 @@ public static class BuiltinRegistry
         var history = historyProvider.Commands;
         var count = history.Count;
         var limit = count;
+        
+        string fullPath;
 
         switch (args)
         {
+            case ["-a", var filePath]:
+                fullPath = Path.GetFullPath(filePath);
+                historyProvider.WriteToFile(fullPath, append: true);
+                return 0;
             case ["-r", var filePath]:
             {
-                var fullPath = Path.GetFullPath(filePath);
+                fullPath = Path.GetFullPath(filePath);
 
                 if (!File.Exists(fullPath))
                 {
@@ -89,7 +95,7 @@ public static class BuiltinRegistry
             }
             case ["-w", var filePath]:
             {
-                var fullPath = Path.GetFullPath(filePath);
+                fullPath = Path.GetFullPath(filePath);
                 historyProvider.WriteToFile(fullPath);
                 return 0;
             }

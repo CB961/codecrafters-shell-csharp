@@ -46,14 +46,14 @@ public sealed class CommandHistory
         HasBeenBrowsed = false;
     }
 
-    public void WriteToFile(string filePath)
+    public void WriteToFile(string filePath, bool append = false)
     {
         var fullPath = Path.GetFullPath(filePath);
 
         if (UsedCommandsCurrentSession.Count == 0)
             return;
 
-        using var outputFile = new StreamWriter(fullPath, append: true);
+        using var outputFile = new StreamWriter(fullPath, append: append);
         try
         {
             foreach (var cmd in UsedCommandsCurrentSession)
