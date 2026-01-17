@@ -21,6 +21,14 @@ public sealed class CommandHistory
         _currentIndex = UsedCommands.Count - 1;
     }
 
+    public void InitHistoryFromFile(string filePath)
+    {
+        if (string.IsNullOrEmpty(filePath))
+            return;
+        
+        LoadFromFile(filePath);
+    }
+
     public void LoadFromFile(string filePath)
     {
         var fullPath = Path.GetFullPath(filePath);
