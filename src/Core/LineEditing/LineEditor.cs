@@ -234,7 +234,7 @@ public class LineEditor(AutocompletionProvider provider, CommandHistory history)
         
         if (suggestions.Count > 1)
         {
-            var lcp = LongestCommonPrefix(suggestions);
+            var lcp = GetLongestCommonPrefix(suggestions);
 
             if (lcp.Length > _completionState.Prefix.Length)
             {
@@ -302,7 +302,7 @@ public class LineEditor(AutocompletionProvider provider, CommandHistory history)
 
     #region Helpers
 
-    private static string LongestCommonPrefix(IReadOnlyList<string> strings)
+    private static string GetLongestCommonPrefix(IReadOnlyList<string> strings)
     {
         if (strings.Count == 0)
             return string.Empty;

@@ -191,6 +191,7 @@ public sealed class CommandEvaluator
 
                     var ctx = new ShellContext(
                         _context.Builtins,
+                        _context.History,
                         inputReader,
                         outputWriter,
                         _context.StdErr

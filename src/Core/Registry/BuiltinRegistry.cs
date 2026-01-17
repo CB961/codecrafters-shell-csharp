@@ -67,20 +67,38 @@ public static class BuiltinRegistry
 
     private static int History(IReadOnlyList<string> args, IShellContext context)
     {
-        var historyItems = context.History.GetCommandHistory();
+        var hasArgs = args.Any();
         
-        
-        var limit = 0;
-        var result = args.Any() && TryParse(args[0], out limit);
-        var boundary = result ? historyItems.Count - limit : 0;
-        
-        for (var i = 0; i < historyItems.Count; i++)
+        if (hasArgs && args is ["-r", var filePath])
         {
-            if (result && i < boundary)
+            var fullPath = Path.GetFullPath(filePath);
+
+            if (File.Exists(fullPath))
             {
-                continue;
+                context.History.LoadFromFile(fullPath);
+                return 0;
             }
-            context.StdOut.WriteLine($"    {i + 1}  {historyItems[i]}");
+            
+            context.StdErr.WriteLine($"history: {filePath}: File doesn't exist!");
+            return 1;
+        }
+        
+        var history = context.History.GetCommandHistory();
+        var count = history.Count;
+        
+        var limit = count;
+
+        if (hasArgs)
+        {
+            var result = TryParse(args[0], out var parsed);
+            limit = result ? Math.Clamp(parsed, 0, count) : limit;
+        }
+
+        var start = count - limit;
+        
+        for (var i = start; i < history.Count; i++)
+        {
+            context.StdOut.WriteLine($"    {i + 1}  {history[i]}");
         }
 
         return 0;

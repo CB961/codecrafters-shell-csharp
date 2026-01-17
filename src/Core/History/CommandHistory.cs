@@ -16,6 +16,22 @@ public sealed class CommandHistory
         HasBeenBrowsed = false;
         _currentIndex = UsedCommands.Count - 1;
     }
+
+    public void LoadFromFile(string filePath)
+    {
+        var fullPath = Path.GetFullPath(filePath);
+
+        if (!File.Exists(fullPath))
+            return;
+
+        using var file = File.OpenText(fullPath);
+
+        foreach (var line in File.ReadLines(fullPath))
+        {
+            if (!string.IsNullOrWhiteSpace(line))
+                UsedCommands.Add(line);
+        }
+    }
     
     public string GetCurrent() => !IsEmpty ? UsedCommands[_currentIndex] : string.Empty;
     
@@ -59,7 +75,7 @@ public sealed class CommandHistory
     
     private void ToPrevious()
     {
-        if (_currentIndex - 1 > 0) 
+        if (_currentIndex > 0) 
             _currentIndex--;
     }
     
