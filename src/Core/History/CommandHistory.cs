@@ -124,6 +124,6 @@ public sealed class CommandHistory
 
     public void SaveSessionToHistFile(string histFile)
     {
-        WriteToFile(histFile);
+        WriteToFile(histFile, append: true);
     }
 }
