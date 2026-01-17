@@ -6,6 +6,8 @@ public sealed class CommandHistory
 
     private List<string> UsedCommandsCurrentSession { get; } = [];
     private List<string> UsedCommands { get; } = [];
+    public IReadOnlyList<string> Commands => UsedCommands;
+    
     public bool IsEmpty => UsedCommands.Count == 0;
     public bool IsAtFirstPos => !IsEmpty && _currentIndex == 0;
     public bool IsAtLastPos => !IsEmpty && _currentIndex == UsedCommands.Count - 1;
@@ -19,12 +21,12 @@ public sealed class CommandHistory
         _currentIndex = UsedCommands.Count - 1;
     }
 
-    public int LoadFromFile(string filePath)
+    public void LoadFromFile(string filePath)
     {
         var fullPath = Path.GetFullPath(filePath);
 
         if (!File.Exists(fullPath))
-            return -1;
+            return;
 
         try
         {
@@ -37,48 +39,43 @@ public sealed class CommandHistory
         catch (Exception ex)
         {
             Console.Error.WriteLine(ex.Message);
-            return 1;
+            return;
         }
-
-        return 0;
+        
+        _currentIndex = UsedCommands.Count - 1;
+        HasBeenBrowsed = false;
     }
 
-    public int WriteToFile(string filePath)
+    public void WriteToFile(string filePath)
     {
         var fullPath = Path.GetFullPath(filePath);
 
         if (UsedCommandsCurrentSession.Count == 0)
-            return -1;
+            return;
 
-        using var outputFile = new StreamWriter(fullPath);
+        using var outputFile = new StreamWriter(fullPath, append: true);
         try
         {
             foreach (var cmd in UsedCommandsCurrentSession)
             {
                 outputFile.WriteLine(cmd);
             }
+            UsedCommandsCurrentSession.Clear();
         }
         catch (Exception e)
         {
             Console.Error.WriteLine(e.Message);
-            return -1;
         }
-        
-        return 0;
     }
-    
-    public string GetCurrent() => !IsEmpty ? UsedCommands[_currentIndex] : string.Empty;
+
+    private string GetCurrent() => !IsEmpty ? UsedCommands[_currentIndex] : string.Empty;
     
     public string GetNext()
     {
-        if (IsEmpty)
+        if (IsEmpty || !HasBeenBrowsed)
             return string.Empty;
         
         ToNext();
-        
-        if (!HasBeenBrowsed)
-            HasBeenBrowsed = true;
-        
         return GetCurrent();
     }
 
@@ -99,12 +96,10 @@ public sealed class CommandHistory
 
     private string GetLast()
     {
-        return !IsEmpty ? UsedCommands.Last() : string.Empty;
-    }
-
-    public IReadOnlyList<string> GetCommandHistory()
-    {
-        return [..UsedCommands];
+        if (IsEmpty) return string.Empty;
+        
+        _currentIndex = UsedCommands.Count - 1;
+        return UsedCommands.Last();
     }
     
     private void ToPrevious()

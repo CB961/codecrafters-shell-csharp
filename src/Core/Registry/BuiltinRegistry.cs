@@ -1,5 +1,4 @@
-﻿using codecrafters_shell.Core.History;
-using codecrafters_shell.Helpers;
+﻿using codecrafters_shell.Helpers;
 using codecrafters_shell.Interfaces;
 using static System.Int32;
 
@@ -68,42 +67,47 @@ public static class BuiltinRegistry
 
     private static int History(IReadOnlyList<string> args, IShellContext context)
     {
-        var hasArgs = args.Any();
         var historyProvider = context.History;
-        
-        switch (hasArgs)
-        {
-            case true when args is ["-r", var filePath]:
-            {
-                var fullPath = Path.GetFullPath(filePath);
-
-                if (File.Exists(fullPath))
-                {
-                    return historyProvider.LoadFromFile(fullPath);
-                }
-            
-                context.StdErr.WriteLine($"history: {filePath}: File doesn't exist!");
-                return 1;
-            }
-            case true when args is ["-w", var filePath]:
-            {
-                var fullPath = Path.GetFullPath(filePath);
-
-                return historyProvider.WriteToFile(fullPath);
-            }
-        }
-        var history = historyProvider.GetCommandHistory();
-
+        var history = historyProvider.Commands;
         var count = history.Count;
-        
         var limit = count;
 
-        if (hasArgs)
+        switch (args)
         {
-            var result = TryParse(args[0], out var parsed);
-            limit = result ? Math.Clamp(parsed, 0, count) : limit;
+            case ["-r", var filePath]:
+            {
+                var fullPath = Path.GetFullPath(filePath);
+
+                if (!File.Exists(fullPath))
+                {
+                    context.StdErr.WriteLine($"history: {filePath}: File doesn't exist!");
+                    return 1;
+                }
+            
+                historyProvider.LoadFromFile(fullPath);
+                return 0;
+            }
+            case ["-w", var filePath]:
+            {
+                var fullPath = Path.GetFullPath(filePath);
+                historyProvider.WriteToFile(fullPath);
+                return 0;
+            }
         }
 
+        if (args.Count == 1)
+        {
+            var result = TryParse(args[0], out var parsed);
+
+            if (!result)
+            {
+                context.StdErr.WriteLine($"history: {args[0]}: numeric argument required");
+                return 1;
+            }
+                
+            limit = Math.Clamp(parsed, 0, count);
+        }
+        
         var start = count - limit;
         
         for (var i = start; i < history.Count; i++)
